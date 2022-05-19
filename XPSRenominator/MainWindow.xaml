@@ -1,0 +1,147 @@
+﻿<Window x:Class="XPSRenominator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Drop="Window_Drop" AllowDrop="True"
+        Title="XPS Renominator" Height="400" Width="750">
+    <Window.Resources>
+        <Style TargetType="Border">
+            <Setter Property="BorderBrush" Value="Blue"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto"/>
+            <RowDefinition />
+            <RowDefinition />
+            <RowDefinition />
+            <RowDefinition />
+            <RowDefinition />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="auto"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+
+        <Grid Name="Saving" Grid.RowSpan="5" Grid.ColumnSpan="2" Background="#AA888888" Panel.ZIndex="1" Visibility="Hidden">
+            <Grid.RowDefinitions>
+                <RowDefinition />
+                <RowDefinition />
+            </Grid.RowDefinitions>
+            <Label Name="SavingMessage" VerticalAlignment="Bottom" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">Saving, please wait.</Label>
+            <ProgressBar x:Name="Progress" Grid.Row="1" MinHeight="20" MinWidth="300" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="10"/>
+        </Grid>
+
+        <Menu Grid.ColumnSpan="2">
+            <MenuItem Header="Instructions">
+                <MenuItem Header="How to use Renominator?" Click="RenominatorUsage"/>
+                <MenuItem Header="What is BoneDict?" Click="BoneDictExplanation"/>
+            </MenuItem>
+        </Menu>
+
+        <Border Grid.Row="1" Margin="5">
+            <Button Click="LoadMeshFile">Load .mesh.ascii</Button>
+        </Border>
+        <Border Grid.Row="2" Margin="5">
+            <Button Click="LoadBonesFile">Load BoneDict</Button>
+        </Border>
+        <Border Grid.Row="3" Margin="5" BorderBrush="Green">
+            <Button Click="SaveBones">Save BoneDict</Button>
+        </Border>
+        <Border Grid.Row="4" Margin="5" BorderBrush="Green">
+            <Button Click="SaveMesh">Save .mesh.ascii</Button>
+        </Border>
+        <Border Grid.Row="5" Margin="5" BorderBrush="Red">
+            <Button Click="UnloadAll">Unload all</Button>
+        </Border>
+
+
+        <TabControl Grid.Column="1" Grid.Row="1" Grid.RowSpan="5">
+            <TabItem Header="Bone Rename">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="auto"/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+
+                    <GroupBox Grid.ColumnSpan="3" Header="Filter bones">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" TextAlignment="Right" Margin="0,0,5,0">Original name contains</TextBlock>
+                            <TextBlock Grid.Row="1" TextAlignment="Right" Margin="0,0,5,0">Translated name contains</TextBlock>
+
+                            <TextBox Name="beforeFilter" Grid.Row="0" Grid.Column="1" TextChanged="Filter_TextChanged"/>
+                            <TextBox Name="afterFilter"  Grid.Row="1" Grid.Column="1" TextChanged="Filter_TextChanged"/>
+                            <CheckBox Name="onlyUntranslated" Grid.Row="2" Grid.ColumnSpan="2" HorizontalAlignment="Center" Checked="Filter_TextChanged" Unchecked="Filter_TextChanged" Content="Show only untranslated"/>
+                            <CheckBox Name="onlyConflicting"  Grid.Row="3" Grid.ColumnSpan="2" HorizontalAlignment="Center" Checked="Filter_TextChanged" Unchecked="Filter_TextChanged" Content="Show conflicting translations"/>
+                        </Grid>
+                    </GroupBox>
+                    <GroupBox Grid.Column="3" Grid.ColumnSpan="3" Header="Bulk Rename bones">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="auto"/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" TextAlignment="Right" Margin="0,0,5,0">Name Matches</TextBlock>
+                            <TextBlock Grid.Row="1" TextAlignment="Right" Margin="0,0,5,0">Result</TextBlock>
+                            <TextBox Name="regexOriginal" Grid.Row="0" Grid.Column="1" TextChanged="Regex_TextChanged"/>
+                            <TextBox Name="regexResult"  Grid.Row="1" Grid.Column="1" TextChanged="Regex_TextChanged"/>
+
+                            <Border Grid.Row="3" Grid.ColumnSpan="2" Margin="5" BorderBrush="Green">
+                                <Button Click="ApplyRename">Apply</Button>
+                            </Border>
+                        </Grid>
+                    </GroupBox>
+
+                    <ScrollViewer Grid.ColumnSpan="6" Grid.Row="1">
+                        <Grid x:Name="BonesGrid">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="auto"/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Bone Reparent">
+
+                <TreeView x:Name="boneTree" MouseMove="BoneTree_MouseMove">
+                </TreeView>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>
