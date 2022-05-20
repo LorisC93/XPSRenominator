@@ -119,6 +119,32 @@ namespace XPSRenominator
             }
         }
 
+        public void AddBone(Bone? parent = null)
+        {
+            Bone toAdd = new()
+            {
+                OriginalName = "bone" + Bones.Count,
+                TranslatedName = "bone" + Bones.Count,
+                FromMeshAscii = false,
+                Position = parent?.Position ?? new double[3] { 0, 0, 0 },
+                Parent = parent
+            };
+            Bones.Add(toAdd);
+        }
+
+        public void MakeRoot(Bone bone)
+        {
+            bone.Position = new double[3] { 0, 0, 0 };
+            bone.TranslatedName = "root ground";
+            bone.Parent = null;
+
+            Bones.Remove(bone);
+
+            Bones.Where(b => b.Parent == null).ToList().ForEach(b => b.Parent = bone);
+
+            Bones.Insert(0, bone);
+        }
+
         public void LoadBoneFile(string fileName, bool keepAll = true)
         {
             File.ReadLines(fileName).ToList().ForEach(boneLine =>
@@ -204,5 +230,14 @@ namespace XPSRenominator
             return true;
         }
 
+        public void SaveBones(string fileName, Action increaseProgress)
+        {
+            using StreamWriter file = new(fileName, false);
+            Bones.Where(b => b.OriginalName != b.TranslatedName).Select(b => b.OriginalName + ";" + b.TranslatedName).ToList().ForEach(line =>
+            {
+                file.WriteLine(line);
+                increaseProgress();
+            });
+        }
     }
 }

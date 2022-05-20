@@ -20,12 +20,9 @@ namespace XPSRenominator
     /// </summary>
     public partial class MainWindow : Window
     {
-        private const char separator = ';';
-
-        // private List<string> originalLines = new();
-        // private readonly List<Bone> bones = new();
-        private MeshAsciiLoader loader = new();
-        private string originalFileName;
+        private readonly MeshAsciiLoader loader = new();
+        private string? originalMeshAsciiName;
+        private string? originalBonedictName;
 
         public MainWindow()
         {
@@ -131,6 +128,16 @@ namespace XPSRenominator
             }
         }
 
+        private void BoneTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+            if (boneTree.SelectedItem is TreeViewItem item && item.Tag is Bone bone)
+            {
+                selectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
+                selectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
+                selectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position[2]");
+            }
+        }
+
         private void TreeItem_Drop(object sender, DragEventArgs e)
         {
             TreeViewItem? target = sender as TreeViewItem;
@@ -145,9 +152,30 @@ namespace XPSRenominator
             e.Handled = true;
         }
 
+        private void AddBone(object sender, RoutedEventArgs e)
+        {
+            if (boneTree.SelectedItem is TreeViewItem item && item.Tag is Bone bone)
+            {
+                loader.AddBone(bone);
+            }
+            else
+            {
+                loader.AddBone();
+            }
+            RenderBones();
+        }
+        private void MakeRoot(object sender, RoutedEventArgs e)
+        {
+            if (boneTree.SelectedItem is TreeViewItem item && item.Tag is Bone bone)
+            {
+                loader.MakeRoot(bone);
+                RenderBones();
+            }
+        }
+
         private void LoadFile(string fileName)
         {
-            originalFileName = fileName;
+            originalMeshAsciiName = fileName;
             loader.LoadAsciiFile(fileName);
 
             RenderBones();
@@ -178,6 +206,8 @@ namespace XPSRenominator
 
         private void LoadBones(string fileName, bool keepAll = true)
         {
+            originalBonedictName = fileName;
+
             loader.LoadBoneFile(fileName, keepAll);
 
             RenderBones();
@@ -207,39 +237,32 @@ namespace XPSRenominator
         {
             SavingMessage.Content = "Saving, please wait.";
 
-            SaveFileDialog sfd = new SaveFileDialog()
+            SaveFileDialog sfd = new()
             {
                 Title = "Select where to save the bone list names",
                 AddExtension = true,
                 Filter = "BoneDict file|*.txt",
-                FileName = "BoneDict"
+                FileName = originalBonedictName ?? "Bonedict"
             };
             if (sfd.ShowDialog() == true)
             {
                 Progress.Maximum = loader.Bones.Count;
                 Progress.Value = 0;
                 Saving.Visibility = Visibility.Visible;
-                new Thread(() =>
-                {
-                    using StreamWriter file = new(sfd.FileName, false);
-                    loader.Bones.Where(b => b.OriginalName != b.TranslatedName).Select(b => b.OriginalName + separator + b.TranslatedName).ToList().ForEach(line =>
-                    {
-                        file.WriteLine(line);
-                        IncreaseProgress();
-                    });
-                    Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
-                }).Start();
+                new Thread(() => loader.SaveBones(sfd.FileName, IncreaseProgress)).Start();
             }
         }
 
         private void SaveMesh(object sender, RoutedEventArgs e)
         {
+            SavingMessage.Content = "Saving, please wait.";
+
             SaveFileDialog sfd = new()
             {
                 Title = "Select where to save the resulting mesh",
                 AddExtension = true,
                 Filter = "XPS .mesh.ascii|*.mesh.ascii",
-                FileName = originalFileName + "_renamed"
+                FileName = originalMeshAsciiName != null ? originalMeshAsciiName + "_renamed" : "generic_item"
             };
             if (sfd.ShowDialog() == true)
             {
@@ -260,8 +283,12 @@ namespace XPSRenominator
         private void UnloadAll(object sender, RoutedEventArgs e)
         {
             loader.Bones.Clear();
+            loader.Meshes.Clear();
             RenderBones();
+            originalBonedictName = null;
+            originalMeshAsciiName = null;
         }
+        
         private void IncreaseProgress()
         {
             Progress.Dispatcher.Invoke(() =>
@@ -303,7 +330,7 @@ namespace XPSRenominator
             RenderBones();
         }
 
-        private void Regex_TextChanged(object sender, TextChangedEventArgs e)
+        private void Regex_TextChanged(object sender, TextChangedEventArgs? e)
         {
             loader.Bones.ForEach(b => b.TranslatingName = null);
 
@@ -311,7 +338,7 @@ namespace XPSRenominator
             {
                 try
                 {
-                    Regex r1 = new Regex(regexOriginal.Text);
+                    Regex r1 = new(regexOriginal.Text);
                     loader.Bones.Where(b => r1.IsMatch(b.TranslatedName)).ToList().ForEach(b =>
                     {
                         try
@@ -329,8 +356,11 @@ namespace XPSRenominator
 
         private void ApplyRename(object sender, RoutedEventArgs e)
         {
+            #pragma warning disable CS8601 // Possible null reference assignment.
             loader.Bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName);
+            #pragma warning restore CS8601 // Possible null reference assignment.
             Regex_TextChanged(regexResult, null);
         }
+
     }
 }

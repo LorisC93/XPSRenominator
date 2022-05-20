@@ -138,9 +138,29 @@
                 </Grid>
             </TabItem>
             <TabItem Header="Bone Reparent">
+                <Grid>
+                    <TreeView x:Name="boneTree" MouseMove="BoneTree_MouseMove" SelectedItemChanged="BoneTree_SelectedItemChanged">
+                    </TreeView>
+                    <StackPanel VerticalAlignment="Top" HorizontalAlignment="Right" Margin="25, 5">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Width="50" Margin="2" TextAlignment="Center">X</TextBlock>
+                            <TextBlock Width="50" Margin="2" TextAlignment="Center">Y</TextBlock>
+                            <TextBlock Width="50" Margin="2" TextAlignment="Center">Z</TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBox x:Name="selectedBoneXPosition" Width="50" Margin="2"></TextBox>
+                            <TextBox x:Name="selectedBoneYPosition" Width="50" Margin="2"></TextBox>
+                            <TextBox x:Name="selectedBoneZPosition" Width="50" Margin="2"></TextBox>
+                        </StackPanel>
 
-                <TreeView x:Name="boneTree" MouseMove="BoneTree_MouseMove">
-                </TreeView>
+                        <Border Grid.Row="5" Margin="5" BorderBrush="LightGreen">
+                            <Button Click="AddBone">Add Bone</Button>
+                        </Border>
+                        <Border Grid.Row="5" Margin="5" BorderBrush="Red">
+                            <Button Click="MakeRoot">Make Root</Button>
+                        </Border>
+                    </StackPanel>
+                </Grid>
             </TabItem>
         </TabControl>
     </Grid>
