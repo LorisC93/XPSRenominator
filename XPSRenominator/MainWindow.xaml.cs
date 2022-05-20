@@ -22,9 +22,10 @@ namespace XPSRenominator
     {
         private const char separator = ';';
 
-        private string originalFileName = "";
-        private List<string> originalLines = new();
-        private readonly List<Bone> bones = new();
+        // private List<string> originalLines = new();
+        // private readonly List<Bone> bones = new();
+        private MeshAsciiLoader loader = new();
+        private string originalFileName;
 
         public MainWindow()
         {
@@ -40,9 +41,9 @@ namespace XPSRenominator
 
                 bool containsCondition(Bone bone) => bone.OriginalName.Contains(beforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(afterFilter.Text.ToLower());
                 bool onlyUntranslatedCondition(Bone bone) => onlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
-                bool onlyConflictingCondition(Bone bone) => onlyConflicting.IsChecked == false || bones.Count(b => bone.TranslatedName == b.TranslatedName) > 1;
+                bool onlyConflictingCondition(Bone bone) => onlyConflicting.IsChecked == false || loader.Bones.Count(b => bone.TranslatedName == b.TranslatedName) > 1;
 
-                foreach (var bone in bones.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b)))
+                foreach (var bone in loader.Bones.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b)))
                 {
                     BonesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
 
@@ -84,7 +85,7 @@ namespace XPSRenominator
                 treeItem.DragEnter += TreeItem_DragEnter;
                 treeItem.DragLeave += TreeItem_DragLeave;
                 treeItem.Drop += TreeItem_Drop;
-                foreach (Bone child in bones.Where(b => b.Parent == bone))
+                foreach (Bone child in loader.Bones.Where(b => b.Parent == bone))
                 {
                     RenderTreeItem(child, treeItem);
                 }
@@ -97,7 +98,7 @@ namespace XPSRenominator
             boneTree.Dispatcher.Invoke(() =>
             {
                 boneTree.Items.Clear();
-                foreach (Bone bone in bones.Where(b => b.Parent == null))
+                foreach (Bone bone in loader.Bones.Where(b => b.Parent == null))
                 {
                     RenderTreeItem(bone);
                 }
@@ -134,12 +135,11 @@ namespace XPSRenominator
         {
             TreeViewItem? target = sender as TreeViewItem;
             TreeViewItem? source = e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
-            if (target?.Tag is Bone targetBone && source?.Tag is Bone draggedBone && draggedBone.Parent != null && draggedBone != targetBone)
+            if (target?.Tag is Bone targetBone && source?.Tag is Bone draggedBone && draggedBone.Parent != null && draggedBone != targetBone && source.Parent is TreeViewItem parent)
             {
-                (source.Parent as TreeViewItem).Items.Remove(source);
+                parent.Items.Remove(source);
                 draggedBone.Parent = targetBone;
                 target.Items.Add(source);
-                // RenderTree();
             }
             TreeItem_DragLeave(sender, e);
             e.Handled = true;
@@ -147,37 +147,8 @@ namespace XPSRenominator
 
         private void LoadFile(string fileName)
         {
-            originalFileName = fileName.Replace(".mesh.ascii", "");
-            originalLines = File.ReadLines(fileName).ToList();
-            int boneCount = int.Parse(originalLines.First().Split('#').First());
-
-            //3 lines per bone
-            //bone name
-            //parent index
-            //position
-
-            bones.Clear();
-            Dictionary<Bone, int> parentIndexes = new();
-            for (int i = 1; i <= boneCount * 3; i += 3)
-            {
-                string name = originalLines[i].Clean();
-                int parentIndex = int.Parse(originalLines[i + 1]);
-                float[] position = originalLines[i + 2].Split(' ').Select(n => float.Parse(n)).ToArray();
-                Bone bone = new Bone()
-                {
-                    OriginalName = name,
-                    TranslatedName = name,
-                    Position = position,
-                    FromMeshAscii = true
-                };
-                parentIndexes.Add(bone, parentIndex);
-                bones.Add(bone);
-            }
-            foreach (Bone bone in bones)
-            {
-                int parentIndex = parentIndexes[bone];
-                bone.Parent = parentIndex == -1 ? null : bones[parentIndex];
-            }
+            originalFileName = fileName;
+            loader.LoadAsciiFile(fileName);
 
             RenderBones();
 
@@ -207,40 +178,9 @@ namespace XPSRenominator
 
         private void LoadBones(string fileName, bool keepAll = true)
         {
-            new Thread(() =>
-            {
-                File.ReadLines(fileName).ToList().ForEach(boneLine =>
-                {
-                    if (!boneLine.StartsWith("#") && !string.IsNullOrWhiteSpace(boneLine))
-                    {
-                        string[] parts = boneLine.Split(separator).Select(part => part.Trim()).ToArray();
-                        if (parts.Length == 2)
-                        {
-                            string originalName = parts[0].Clean();
-                            string translation = parts[1].Clean();
-                            Bone? bone = bones.Find(b => b.OriginalName == originalName);
-                            if (bone != null)
-                            {
-                                bone.TranslatedName = translation;
-                            }
-                            else if (keepAll)
-                            {
-                                bones.Add(new Bone()
-                                {
-                                    OriginalName = originalName,
-                                    TranslatedName = translation,
-                                    FromMeshAscii = false
-                                });
-                            }
-                        }
-                    }
-                });
+            loader.LoadBoneFile(fileName, keepAll);
 
-                RenderBones();
-
-                Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
-                Progress.Dispatcher.Invoke(() => Progress.Visibility = Visibility.Visible);
-            }).Start();
+            RenderBones();
         }
 
         private void LoadBonesFile(object sender, RoutedEventArgs e)
@@ -276,13 +216,13 @@ namespace XPSRenominator
             };
             if (sfd.ShowDialog() == true)
             {
-                Progress.Maximum = bones.Count;
+                Progress.Maximum = loader.Bones.Count;
                 Progress.Value = 0;
                 Saving.Visibility = Visibility.Visible;
                 new Thread(() =>
                 {
                     using StreamWriter file = new(sfd.FileName, false);
-                    bones.Where(b => b.OriginalName != b.TranslatedName).Select(b => b.OriginalName + separator + b.TranslatedName).ToList().ForEach(line =>
+                    loader.Bones.Where(b => b.OriginalName != b.TranslatedName).Select(b => b.OriginalName + separator + b.TranslatedName).ToList().ForEach(line =>
                     {
                         file.WriteLine(line);
                         IncreaseProgress();
@@ -292,23 +232,8 @@ namespace XPSRenominator
             }
         }
 
-        private bool ConfictExists(out string[] conficting)
-        {
-            IEnumerable<IGrouping<string, Bone>> groups = bones.Where(b => b.FromMeshAscii).GroupBy(b => b.TranslatedName);
-            conficting = groups.Where(g => g.Count() > 1).Select(g => g.Key).ToArray();
-            return conficting.Length > 0;
-        }
-
         private void SaveMesh(object sender, RoutedEventArgs e)
         {
-            if (ConfictExists(out string[] conficting))
-            {
-                MessageBox.Show('"' + conficting[0] + "\" and \"" + conficting[1] + "\" are conflicting, rename one of them before saving", "Confict found", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
-                return;
-            }
-
-            SavingMessage.Content = "Saving, please wait.";
-
             SaveFileDialog sfd = new()
             {
                 Title = "Select where to save the resulting mesh",
@@ -318,34 +243,23 @@ namespace XPSRenominator
             };
             if (sfd.ShowDialog() == true)
             {
-                Progress.Maximum = originalLines.Count;
+                Progress.Maximum = loader.Bones.Count + loader.Meshes.Count;
                 Progress.Value = 0;
                 Saving.Visibility = Visibility.Visible;
+
                 new Thread(() =>
                 {
-                    using StreamWriter file = new(sfd.FileName, false);
-                    file.WriteLine(bones.Count + " # bones");
-                    bones.ForEach(b =>
+                    if (!loader.SaveAscii(sfd.FileName, out string[] conflicting, IncreaseProgress))
                     {
-                        file.WriteLine(b.TranslatedName);
-                        file.WriteLine(b.Parent == null ? "-1" : bones.IndexOf(b.Parent).ToString());
-                        file.WriteLine(string.Join(" ", b.Position));
-                        IncreaseProgress();
-                    });
-
-                    originalLines.Skip(1 + bones.Count * 3).ToList().ForEach(line =>
-                    {
-                        file.WriteLine(line);
-                        IncreaseProgress();
-                    });
-                    Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
+                        MessageBox.Show('"' + conflicting[0] + "\" and \"" + conflicting[1] + "\" are conflicting, rename one of them before saving", "Confict found", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
+                    }
                 }).Start();
             }
         }
 
         private void UnloadAll(object sender, RoutedEventArgs e)
         {
-            bones.Clear();
+            loader.Bones.Clear();
             RenderBones();
         }
         private void IncreaseProgress()
@@ -391,14 +305,14 @@ namespace XPSRenominator
 
         private void Regex_TextChanged(object sender, TextChangedEventArgs e)
         {
-            bones.ForEach(b => b.TranslatingName = null);
+            loader.Bones.ForEach(b => b.TranslatingName = null);
 
             if (regexOriginal.Text.Length > 0)
             {
                 try
                 {
                     Regex r1 = new Regex(regexOriginal.Text);
-                    bones.Where(b => r1.IsMatch(b.TranslatedName)).ToList().ForEach(b =>
+                    loader.Bones.Where(b => r1.IsMatch(b.TranslatedName)).ToList().ForEach(b =>
                     {
                         try
                         {
@@ -415,7 +329,7 @@ namespace XPSRenominator
 
         private void ApplyRename(object sender, RoutedEventArgs e)
         {
-            bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName);
+            loader.Bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName);
             Regex_TextChanged(regexResult, null);
         }
     }

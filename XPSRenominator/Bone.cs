@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace XPSRenominator
 {
-    internal class Bone : INotifyPropertyChanged
+    public class Bone : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -28,7 +28,7 @@ namespace XPSRenominator
             }
         }
         public Bone? Parent { get; set; }
-        public float[] Position { get; set; } = new float[3];
+        public double[] Position { get; set; } = new double[3];
         public bool FromMeshAscii { get; set; }
 
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
