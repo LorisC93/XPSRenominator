@@ -4,7 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace XPSRenominator
+namespace XPSRenominator.Models
 {
     class Mesh : INotifyPropertyChanged
     {
@@ -12,6 +12,7 @@ namespace XPSRenominator
 
         private string? translatingName = "";
         private string translatedName = "";
+        private RenderGroup renderGroup = RenderGroup.OnlyDiffuse;
 
         public string TranslatedName
         {
@@ -30,8 +31,15 @@ namespace XPSRenominator
             }
         }
 
-        public int RenderGroup { get; set; } = 6;
-        public float[] RenderParameters { get; set; } = new float[3] { 1, 0, 0};
+        public RenderGroup RenderGroup
+        {
+            get => renderGroup; set
+            {
+                renderGroup = value;
+                OnPropertyChanged();
+            }
+        }
+        public float[] RenderParameters { get; set; } = new float[3] { 1, 0, 0 };
         public string OriginalName { get; set; } = "";
         public int UvLayers { get; set; } = 1;
         public List<Texture> Textures { get; set; } = new();
@@ -47,7 +55,7 @@ namespace XPSRenominator
         {
             string[] parts = line.Split('_');
 
-            RenderGroup = int.Parse(parts[0]);
+            RenderGroup = RenderGroup.ByID(int.Parse(parts[0]))!;
 
             bool paramsPresent = parts.Length >= 5 && parts.TakeLast(3).All(p => float.TryParse(p, out float _));
 
@@ -70,10 +78,36 @@ namespace XPSRenominator
 
         }
     }
-    class Texture
+    class Texture : INotifyPropertyChanged
     {
-        public string Name { get; set; } = "";
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private string? translatingName = "";
+        private string translatedName = "";
+
+        public string OriginalName { get; set; } = "";
+        public string TranslatedName
+        {
+            get => translatedName; set
+            {
+                translatedName = value;
+                OnPropertyChanged();
+            }
+        }
+        public string? TranslatingName
+        {
+            get => translatingName; set
+            {
+                translatingName = value;
+                OnPropertyChanged();
+            }
+        }
         public int UvLayer { get; set; } = 0;
+
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
     }
     class Vertex
     {

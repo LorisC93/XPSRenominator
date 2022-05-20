@@ -1,11 +1,8 @@
-﻿using Microsoft.Win32;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using XPSRenominator.Models;
 
 namespace XPSRenominator
 {
@@ -92,7 +89,7 @@ namespace XPSRenominator
                 mesh.UvLayers = int.Parse(originalLines[pointer++].Split('#').First());
                 int textureCount = int.Parse(originalLines[pointer++].Split('#').First());
                 for (int j = 0; j < textureCount; j++)
-                    mesh.Textures.Add(new() { Name = originalLines[pointer++], UvLayer = int.Parse(originalLines[pointer++].Split('#').First()) });
+                    mesh.Textures.Add(new() { OriginalName = originalLines[pointer].Clean(true), TranslatedName = originalLines[pointer++].Clean(true), UvLayer = int.Parse(originalLines[pointer++].Split('#').First()) });
                 int verticesCount = int.Parse(originalLines[pointer++].Split('#').First());
                 for (int j = 0; j < verticesCount; j++)
                 {
@@ -200,14 +197,22 @@ namespace XPSRenominator
             file.WriteLine(Meshes.Count + " # meshes");
             Meshes.ForEach(b =>
             {
-                file.WriteLine(b.RenderGroup + "_" + b.TranslatedName + "_" + string.Join('_', b.RenderParameters));
+                file.WriteLine(b.RenderGroup.ID + "_" + b.TranslatedName + "_" + string.Join('_', b.RenderParameters));
                 file.WriteLine(b.UvLayers + " # uv layers");
-                file.WriteLine(b.Textures.Count + " # textures");
-                b.Textures.ForEach(t =>
+                file.WriteLine(b.RenderGroup.SupportedTextureTypes.Count + " # textures");
+                for (int i = 0; i < b.RenderGroup.SupportedTextureTypes.Count; i++)
                 {
-                    file.WriteLine(t.Name);
-                    file.WriteLine(t.UvLayer + " # uv layer index");
-                });
+                    if (b.Textures.Count > i && !string.IsNullOrEmpty(b.Textures[i].TranslatedName))
+                    {
+                        file.WriteLine(b.Textures[i].TranslatedName);
+                        file.WriteLine(b.Textures[i].UvLayer + " # uv layer index");
+                    }
+                    else
+                    {
+                        file.WriteLine("missing.png");
+                        file.WriteLine("0 # uv layer index");
+                    }
+                }
                 file.WriteLine(b.Vertices.Count + " # vertices");
                 b.Vertices.ForEach(v =>
                 {

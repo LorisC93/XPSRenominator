@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace XPSRenominator
+namespace XPSRenominator.Models
 {
     public class Bone : INotifyPropertyChanged
     {

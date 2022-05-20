@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using XPSRenominator.Models;
 
 namespace XPSRenominator
 {
@@ -141,6 +142,82 @@ namespace XPSRenominator
                     translatingTextBlock.Foreground = Brushes.Red;
                     translatingTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatingName");
                     MeshesGrid.Children.Add(translatingTextBlock);
+                }
+            });
+            RenderTextures();
+        }
+
+        private void RenderTextures()
+        {
+            TexturesPanel.Dispatcher.Invoke(() =>
+            {
+                TexturesPanel.Children.Clear();
+
+                foreach (Mesh mesh in loader.Meshes)
+                {
+                    StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal };
+
+                    ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = mesh.RenderGroup, Margin = new(0, 0, 5, 0) };
+                    meshRenderGroupComboBox.Bind(ComboBox.SelectedItemProperty, mesh, "RenderGroup");
+                    meshRenderGroupComboBox.SelectionChanged += delegate(object sender, SelectionChangedEventArgs e) { RenderTextures(); };
+                    groupBoxHeader.Children.Add(meshRenderGroupComboBox);
+
+                    TextBlock meshNameTextBlock = new() { Text = mesh.TranslatedName };
+                    meshNameTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
+                    groupBoxHeader.Children.Add(meshNameTextBlock);
+
+                    GroupBox meshNameGroupBox = new() { Header = groupBoxHeader };
+                    TexturesPanel.Children.Add(meshNameGroupBox);
+
+                    Grid texturesGrid = new();
+                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Auto) });
+                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
+                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Auto) });
+                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
+                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
+                    meshNameGroupBox.Content = texturesGrid;
+
+                    for (int i = 0; i < mesh.RenderGroup.SupportedTextureTypes.Count(); i++)
+                    {
+                        if (mesh.Textures.Count() <= i)
+                        {
+                            mesh.Textures.Add(new Texture());
+                        }
+                        Texture texture = mesh.Textures.ElementAt(i);
+
+                        texturesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
+
+                        TextBlock textureTypeTextBlock = new() { Text = mesh.RenderGroup.SupportedTextureTypes[i].Code(), Margin = new(0, 0, 5, 0) };
+                        Grid.SetRow(textureTypeTextBlock, texturesGrid.RowDefinitions.Count - 1);
+                        Grid.SetColumn(textureTypeTextBlock, 0);
+                        textureTypeTextBlock.Foreground = Brushes.Gray;
+                        texturesGrid.Children.Add(textureTypeTextBlock);
+
+                        TextBlock originalNameTextBlock = new() { Text = texture.OriginalName };
+                        Grid.SetRow(originalNameTextBlock, texturesGrid.RowDefinitions.Count - 1);
+                        Grid.SetColumn(originalNameTextBlock, 1);
+                        originalNameTextBlock.Bind(TextBlock.TextProperty, texture, "OriginalName");
+                        texturesGrid.Children.Add(originalNameTextBlock);
+
+                        TextBlock arrowTextBlock = new() { Text = "➔" };
+                        Grid.SetRow(arrowTextBlock, texturesGrid.RowDefinitions.Count - 1);
+                        Grid.SetColumn(arrowTextBlock, 2);
+                        arrowTextBlock.Margin = new Thickness(0, 0, 5, 0);
+                        texturesGrid.Children.Add(arrowTextBlock);
+
+                        TextBox translationTextBox = new() { Text = texture.TranslatedName };
+                        Grid.SetRow(translationTextBox, texturesGrid.RowDefinitions.Count - 1);
+                        Grid.SetColumn(translationTextBox, 3);
+                        translationTextBox.Bind(TextBox.TextProperty, texture, "TranslatedName");
+                        texturesGrid.Children.Add(translationTextBox);
+
+                        TextBlock translatingTextBlock = new() { Text = texture.TranslatingName };
+                        Grid.SetRow(translatingTextBlock, texturesGrid.RowDefinitions.Count - 1);
+                        Grid.SetColumn(translatingTextBlock, 4);
+                        translatingTextBlock.Foreground = Brushes.Red;
+                        translatingTextBlock.Bind(TextBlock.TextProperty, texture, "TranslatingName");
+                        texturesGrid.Children.Add(translatingTextBlock);
+                    }
                 }
             });
             RenderTree();
@@ -343,22 +420,6 @@ namespace XPSRenominator
             });
         }
 
-        private void RenominatorUsage(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show("Renominator is a program made to simplify the creation and application of BoneDict files.\n\n" +
-                "First of all load a .mesh.ascii file, then you can proceed in different ways:\n\n" +
-                "- Use the \"Save BoneDict\" button to export a BoneDict.txt file and edit it with the text editor of your choice.\n\n" +
-                "- Edit the bone names directly using Renominator and export the result as a ready to be used BoneDict file using the \"Save BoneDict\" button.\n\n" +
-                "- Edit the bone names directly using Renominator and export a new .mesh.ascii with renamed bones using the \"Save .mesh.ascii\" button.\n\n" +
-                "- Import an already existing BoneDict file using the \"Load BoneDict\" button and export a new .mesh.ascii with renamed bones using the \"Save .mesh.ascii\" button.", "How to use Renominator?", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-        private void BoneDictExplanation(object sender, RoutedEventArgs e)
-        {
-            MessageBox.Show("BoneDict are plain text files used to tell XPS how to rename bones.\n" +
-                "XPS natively supports BoneDict files, all you have to do is place a file called exactly \"BoneDict.txt\" in the same directory as the XPS .exe.\n" +
-                "The placed file will be automatically used the next time you open XPS.", "What is BoneDict?", MessageBoxButton.OK, MessageBoxImage.Information);
-        }
-
         private void Window_Drop(object sender, DragEventArgs e)
         {
             string[] fileNames = (string[])e.Data.GetData(DataFormats.FileDrop);
@@ -379,6 +440,7 @@ namespace XPSRenominator
         {
             loader.Bones.ForEach(b => b.TranslatingName = null);
             loader.Meshes.ForEach(b => b.TranslatingName = null);
+            loader.Meshes.SelectMany(m => m.Textures).ToList().ForEach(b => b.TranslatingName = null);
 
             if (regexOriginal.Text.Length > 0)
             {
@@ -405,6 +467,16 @@ namespace XPSRenominator
                         {
                         }
                     });
+                    loader.Meshes.SelectMany(m => m.Textures).Where(b => r1.IsMatch(b.TranslatedName)).ToList().ForEach(b =>
+                    {
+                        try
+                        {
+                            b.TranslatingName = Regex.Replace(b.TranslatedName, regexOriginal.Text, regexResult.Text);
+                        }
+                        catch
+                        {
+                        }
+                    });
                 }
                 catch { }
             }
@@ -412,12 +484,12 @@ namespace XPSRenominator
 
         private void ApplyRename(object sender, RoutedEventArgs e)
         {
-            #pragma warning disable CS8601 // Possible null reference assignment.
             if (selectedTab == "Bones")
-                loader.Bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName);
+                loader.Bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
             if (selectedTab == "Meshes")
-                loader.Meshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName);
-            #pragma warning restore CS8601 // Possible null reference assignment.
+                loader.Meshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+            if (selectedTab == "Textures")
+                loader.Meshes.SelectMany(m => m.Textures).Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
             Regex_TextChanged(regexResult, null);
         }
 
@@ -425,7 +497,7 @@ namespace XPSRenominator
         {
             if (sender is TabControl tabControl && tabControl.SelectedItem is TabItem tab)
             {
-                selectedTab = tab.Header.ToString() ?? "";
+                selectedTab = tab.Header.ToString()!;
             }
         }
     }

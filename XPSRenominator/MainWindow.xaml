@@ -151,6 +151,12 @@
                                 </Grid>
                             </ScrollViewer>
                         </TabItem>
+                        <TabItem Header="Textures">
+                            <ScrollViewer>
+                                <StackPanel Orientation="Vertical" x:Name="TexturesPanel">
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
                     </TabControl>
                 </Grid>
             </TabItem>

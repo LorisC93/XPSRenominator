@@ -1,22 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Drawing;
 using System.Windows;
 using System.Windows.Data;
 using System.Linq;
+using XPSRenominator.Models;
 
 namespace XPSRenominator
 {
     public static class Utils
     {
-        public static string Clean(this string name)
+        public static string Clean(this string name, bool _allowed = false)
         {
-            return name.ToLower().Replace('_', ' ').Replace(':', ' ').Replace('|', ' ').Trim();
+            string result = name.ToLower().Replace(':', ' ').Replace('|', ' ').Trim();
+            if (!_allowed) result = result.Replace('_', ' ');
+            return result;
         }
 
         public static void Bind(this DependencyObject control, DependencyProperty property, object source, string field)
         {
-            Binding binding = new Binding(field)
+            Binding binding = new(field)
             {
                 Source = source,
                 Mode = BindingMode.TwoWay,
