@@ -9,7 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="XPSrenominator.ico" />
+    <None Remove="XPSrenominatorCropped.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="XPSrenominator.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="XPSrenominatorCropped.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

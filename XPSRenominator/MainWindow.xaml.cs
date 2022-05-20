@@ -23,6 +23,7 @@ namespace XPSRenominator
         private readonly MeshAsciiLoader loader = new();
         private string? originalMeshAsciiName;
         private string? originalBonedictName;
+        private string selectedTab = "Bones";
 
         public MainWindow()
         {
@@ -38,30 +39,30 @@ namespace XPSRenominator
 
                 bool containsCondition(Bone bone) => bone.OriginalName.Contains(beforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(afterFilter.Text.ToLower());
                 bool onlyUntranslatedCondition(Bone bone) => onlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
-                bool onlyConflictingCondition(Bone bone) => onlyConflicting.IsChecked == false || loader.Bones.Count(b => bone.TranslatedName == b.TranslatedName) > 1;
+                bool onlyConflictingCondition(Bone bone) => onlyConflicting.IsChecked == false || (bone.FromMeshAscii && loader.Bones.Where(b => b.FromMeshAscii && b != bone).Any(b => bone.TranslatedName == b.TranslatedName));
 
                 foreach (var bone in loader.Bones.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b)))
                 {
                     BonesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
 
-                    TextBlock originalNameTextBlock = new TextBlock { Text = bone.OriginalName };
+                    TextBlock originalNameTextBlock = new() { Text = bone.OriginalName };
                     Grid.SetRow(originalNameTextBlock, BonesGrid.RowDefinitions.Count - 1);
                     Grid.SetColumn(originalNameTextBlock, 0);
                     BonesGrid.Children.Add(originalNameTextBlock);
 
-                    TextBlock arrowTextBlock = new TextBlock { Text = "➔" };
+                    TextBlock arrowTextBlock = new() { Text = "➔" };
                     Grid.SetRow(arrowTextBlock, BonesGrid.RowDefinitions.Count - 1);
                     Grid.SetColumn(arrowTextBlock, 1);
                     arrowTextBlock.Margin = new Thickness(0, 0, 5, 0);
                     BonesGrid.Children.Add(arrowTextBlock);
 
-                    TextBox translationTextBox = new TextBox { Text = bone.TranslatedName };
+                    TextBox translationTextBox = new() { Text = bone.TranslatedName };
                     Grid.SetRow(translationTextBox, BonesGrid.RowDefinitions.Count - 1);
                     Grid.SetColumn(translationTextBox, 2);
                     translationTextBox.Bind(TextBox.TextProperty, bone, "TranslatedName");
                     BonesGrid.Children.Add(translationTextBox);
 
-                    TextBlock translatingTextBlock = new TextBlock { Text = bone.TranslatingName };
+                    TextBlock translatingTextBlock = new() { Text = bone.TranslatingName };
                     Grid.SetRow(translatingTextBlock, BonesGrid.RowDefinitions.Count - 1);
                     Grid.SetColumn(translatingTextBlock, 3);
                     translatingTextBlock.Foreground = Brushes.Red;
@@ -82,7 +83,7 @@ namespace XPSRenominator
                 treeItem.DragEnter += TreeItem_DragEnter;
                 treeItem.DragLeave += TreeItem_DragLeave;
                 treeItem.Drop += TreeItem_Drop;
-                foreach (Bone child in loader.Bones.Where(b => b.Parent == bone))
+                foreach (Bone child in loader.Bones.Where(b => b.Parent == bone && b.FromMeshAscii))
                 {
                     RenderTreeItem(child, treeItem);
                 }
@@ -95,11 +96,54 @@ namespace XPSRenominator
             boneTree.Dispatcher.Invoke(() =>
             {
                 boneTree.Items.Clear();
-                foreach (Bone bone in loader.Bones.Where(b => b.Parent == null))
+                foreach (Bone bone in loader.Bones.Where(b => b.Parent == null && b.FromMeshAscii))
                 {
                     RenderTreeItem(bone);
                 }
             });
+        }
+
+        private void RenderMeshes()
+        {
+            MeshesGrid.Dispatcher.Invoke(() =>
+            {
+                MeshesGrid.Children.Clear();
+                MeshesGrid.RowDefinitions.Clear();
+
+                bool containsCondition(Mesh mesh) => mesh.OriginalName.Contains(beforeFilter.Text.ToLower()) && mesh.TranslatedName.Contains(afterFilter.Text.ToLower());
+                bool onlyUntranslatedCondition(Mesh mesh) => onlyUntranslated.IsChecked == false || mesh.OriginalName == mesh.TranslatedName;
+                bool onlyConflictingCondition(Mesh mesh) => onlyConflicting.IsChecked == false || loader.Meshes.Where(m => m != mesh).Any(b => mesh.TranslatedName == b.TranslatedName);
+
+                foreach (Mesh mesh in loader.Meshes.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b)))
+                {
+                    MeshesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
+
+                    TextBlock originalNameTextBlock = new() { Text = mesh.OriginalName };
+                    Grid.SetRow(originalNameTextBlock, MeshesGrid.RowDefinitions.Count - 1);
+                    Grid.SetColumn(originalNameTextBlock, 0);
+                    MeshesGrid.Children.Add(originalNameTextBlock);
+
+                    TextBlock arrowTextBlock = new() { Text = "➔" };
+                    Grid.SetRow(arrowTextBlock, MeshesGrid.RowDefinitions.Count - 1);
+                    Grid.SetColumn(arrowTextBlock, 1);
+                    arrowTextBlock.Margin = new Thickness(0, 0, 5, 0);
+                    MeshesGrid.Children.Add(arrowTextBlock);
+
+                    TextBox translationTextBox = new() { Text = mesh.TranslatedName };
+                    Grid.SetRow(translationTextBox, MeshesGrid.RowDefinitions.Count - 1);
+                    Grid.SetColumn(translationTextBox, 2);
+                    translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedName");
+                    MeshesGrid.Children.Add(translationTextBox);
+
+                    TextBlock translatingTextBlock = new() { Text = mesh.TranslatingName };
+                    Grid.SetRow(translatingTextBlock, MeshesGrid.RowDefinitions.Count - 1);
+                    Grid.SetColumn(translatingTextBlock, 3);
+                    translatingTextBlock.Foreground = Brushes.Red;
+                    translatingTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatingName");
+                    MeshesGrid.Children.Add(translatingTextBlock);
+                }
+            });
+            RenderTree();
         }
 
         private void TreeItem_DragEnter(object sender, DragEventArgs e)
@@ -179,6 +223,7 @@ namespace XPSRenominator
             loader.LoadAsciiFile(fileName);
 
             RenderBones();
+            RenderMeshes();
 
             Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
             Progress.Dispatcher.Invoke(() => Progress.Visibility = Visibility.Visible);
@@ -226,9 +271,6 @@ namespace XPSRenominator
             };
             if (ofd.ShowDialog() == true)
             {
-                Saving.Visibility = Visibility.Visible;
-                Progress.Visibility = Visibility.Hidden;
-
                 LoadBones(ofd.FileName);
             }
         }
@@ -266,15 +308,16 @@ namespace XPSRenominator
             };
             if (sfd.ShowDialog() == true)
             {
-                Progress.Maximum = loader.Bones.Count + loader.Meshes.Count;
+                Progress.Maximum = loader.Bones.Where(b => b.FromMeshAscii).Count() + loader.Meshes.Count;
                 Progress.Value = 0;
                 Saving.Visibility = Visibility.Visible;
 
                 new Thread(() =>
                 {
-                    if (!loader.SaveAscii(sfd.FileName, out string[] conflicting, IncreaseProgress))
+                    if (!loader.SaveAscii(sfd.FileName, IncreaseProgress))
                     {
-                        MessageBox.Show('"' + conflicting[0] + "\" and \"" + conflicting[1] + "\" are conflicting, rename one of them before saving", "Confict found", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
+                        MessageBox.Show("conflicting bone and/or mesh names found, solve them before saving", "Confict found", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
+                        Saving.Visibility = Visibility.Hidden;
                     }
                 }).Start();
             }
@@ -285,6 +328,7 @@ namespace XPSRenominator
             loader.Bones.Clear();
             loader.Meshes.Clear();
             RenderBones();
+            RenderMeshes();
             originalBonedictName = null;
             originalMeshAsciiName = null;
         }
@@ -328,11 +372,13 @@ namespace XPSRenominator
         private void Filter_TextChanged(object sender, EventArgs e)
         {
             RenderBones();
+            RenderMeshes();
         }
 
         private void Regex_TextChanged(object sender, TextChangedEventArgs? e)
         {
             loader.Bones.ForEach(b => b.TranslatingName = null);
+            loader.Meshes.ForEach(b => b.TranslatingName = null);
 
             if (regexOriginal.Text.Length > 0)
             {
@@ -340,6 +386,16 @@ namespace XPSRenominator
                 {
                     Regex r1 = new(regexOriginal.Text);
                     loader.Bones.Where(b => r1.IsMatch(b.TranslatedName)).ToList().ForEach(b =>
+                    {
+                        try
+                        {
+                            b.TranslatingName = Regex.Replace(b.TranslatedName, regexOriginal.Text, regexResult.Text);
+                        }
+                        catch
+                        {
+                        }
+                    });
+                    loader.Meshes.Where(b => r1.IsMatch(b.TranslatedName)).ToList().ForEach(b =>
                     {
                         try
                         {
@@ -357,10 +413,20 @@ namespace XPSRenominator
         private void ApplyRename(object sender, RoutedEventArgs e)
         {
             #pragma warning disable CS8601 // Possible null reference assignment.
-            loader.Bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName);
+            if (selectedTab == "Bones")
+                loader.Bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName);
+            if (selectedTab == "Meshes")
+                loader.Meshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName);
             #pragma warning restore CS8601 // Possible null reference assignment.
             Regex_TextChanged(regexResult, null);
         }
 
+        private void BonesorMeshesTab_Selected(object sender, RoutedEventArgs e)
+        {
+            if (sender is TabControl tabControl && tabControl.SelectedItem is TabItem tab)
+            {
+                selectedTab = tab.Header.ToString() ?? "";
+            }
+        }
     }
 }

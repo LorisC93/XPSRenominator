@@ -88,12 +88,7 @@ namespace XPSRenominator
             for (int i = 0; i < meshCount; i++)
             {
                 Mesh mesh = new();
-                string[] nameLine = originalLines[pointer].Split('_');
-                mesh.RenderGroup = int.Parse(nameLine[0]);
-                mesh.Name = nameLine[1];
-                if (nameLine.Length == 5)
-                    mesh.RenderParameters = nameLine.Skip(2).Select(v => float.Parse(v)).ToArray();
-                pointer++;
+                mesh.SetFirstLine(originalLines[pointer++]);
                 mesh.UvLayers = int.Parse(originalLines[pointer++].Split('#').First());
                 int textureCount = int.Parse(originalLines[pointer++].Split('#').First());
                 for (int j = 0; j < textureCount; j++)
@@ -125,7 +120,7 @@ namespace XPSRenominator
             {
                 OriginalName = "bone" + Bones.Count,
                 TranslatedName = "bone" + Bones.Count,
-                FromMeshAscii = false,
+                FromMeshAscii = true,
                 Position = parent?.Position ?? new double[3] { 0, 0, 0 },
                 Parent = parent
             };
@@ -175,23 +170,27 @@ namespace XPSRenominator
             });
         }
 
-        private bool ConfictExists(out string[] conficting)
+        private List<Bone> GetBoneConficts(bool onlyFromMesh = true)
         {
-            IEnumerable<IGrouping<string, Bone>> groups = Bones.Where(b => b.FromMeshAscii).GroupBy(b => b.TranslatedName);
-            conficting = groups.Where(g => g.Count() > 1).Select(g => g.Key).ToArray();
-            return conficting.Length > 0;
+            IEnumerable<IGrouping<string, Bone>> groups = Bones.Where(b => !onlyFromMesh || b.FromMeshAscii).GroupBy(b => b.TranslatedName);
+            return groups.Where(g => g.Count() > 1).SelectMany(g => g).Distinct().ToList();
+        }
+        private List<Mesh> GetMeshConficts()
+        {
+            IEnumerable<IGrouping<string, Mesh>> groups = Meshes.GroupBy(b => b.TranslatedName);
+            return groups.Where(g => g.Count() > 1).SelectMany(g => g).Distinct().ToList();
         }
 
-        public bool SaveAscii(string fileName, out string[] conficting, Action increaseProgress)
+        public bool SaveAscii(string fileName, Action increaseProgress)
         {
-            if (ConfictExists(out conficting))
+            if (GetBoneConficts().Count > 0 || GetMeshConficts().Count > 0)
             {
                 return false;
             }
 
             using StreamWriter file = new(fileName, false);
-            file.WriteLine(Bones.Count + " # bones");
-            Bones.ForEach(b =>
+            file.WriteLine(Bones.Where(b => b.FromMeshAscii).Count() + " # bones");
+            Bones.Where(b => b.FromMeshAscii).ToList().ForEach(b =>
             {
                 file.WriteLine(b.TranslatedName);
                 file.WriteLine((b.Parent == null ? "-1" : Bones.IndexOf(b.Parent).ToString()) + " # parent index");
@@ -201,7 +200,7 @@ namespace XPSRenominator
             file.WriteLine(Meshes.Count + " # meshes");
             Meshes.ForEach(b =>
             {
-                file.WriteLine(b.RenderGroup + "_" + b.Name + "_" + string.Join('_', b.RenderParameters));
+                file.WriteLine(b.RenderGroup + "_" + b.TranslatedName + "_" + string.Join('_', b.RenderParameters));
                 file.WriteLine(b.UvLayers + " # uv layers");
                 file.WriteLine(b.Textures.Count + " # textures");
                 b.Textures.ForEach(t =>

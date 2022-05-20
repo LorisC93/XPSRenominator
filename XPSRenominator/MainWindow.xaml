@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator" Height="400" Width="750">
+        Title="XPS Renominator" Height="600" Width="750">
     <Window.Resources>
         <Style TargetType="Border">
             <Setter Property="BorderBrush" Value="Blue"/>
@@ -33,7 +33,7 @@
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
 
-        <Grid Name="Saving" Grid.RowSpan="5" Grid.ColumnSpan="2" Background="#AA888888" Panel.ZIndex="1" Visibility="Hidden">
+        <Grid Name="Saving" Grid.RowSpan="6" Grid.ColumnSpan="2" Background="#AA888888" Panel.ZIndex="1" Visibility="Hidden">
             <Grid.RowDefinitions>
                 <RowDefinition />
                 <RowDefinition />
@@ -42,32 +42,33 @@
             <ProgressBar x:Name="Progress" Grid.Row="1" MinHeight="20" MinWidth="300" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="10"/>
         </Grid>
 
-        <Menu Grid.ColumnSpan="2">
-            <MenuItem Header="Instructions">
+        <Image Source="XPSrenominatorCropped.ico" Height="50" Margin="10, 0, 0, 0" Grid.ColumnSpan="2" HorizontalAlignment="Left"></Image>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.ColumnSpan="2">
+            <!--MenuItem Header="Instructions">
                 <MenuItem Header="How to use Renominator?" Click="RenominatorUsage"/>
                 <MenuItem Header="What is BoneDict?" Click="BoneDictExplanation"/>
-            </MenuItem>
-        </Menu>
-
-        <Border Grid.Row="1" Margin="5">
-            <Button Click="LoadMeshFile">Load .mesh.ascii</Button>
-        </Border>
-        <Border Grid.Row="2" Margin="5">
-            <Button Click="LoadBonesFile">Load BoneDict</Button>
-        </Border>
-        <Border Grid.Row="3" Margin="5" BorderBrush="Green">
-            <Button Click="SaveBones">Save BoneDict</Button>
-        </Border>
-        <Border Grid.Row="4" Margin="5" BorderBrush="Green">
-            <Button Click="SaveMesh">Save .mesh.ascii</Button>
-        </Border>
-        <Border Grid.Row="5" Margin="5" BorderBrush="Red">
-            <Button Click="UnloadAll">Unload all</Button>
-        </Border>
-
+            </MenuItem-->
+            <Border Grid.Row="1" Margin="5">
+                <Button Click="LoadMeshFile">Load .mesh.ascii</Button>
+            </Border>
+            <Border Grid.Row="4" Margin="5" BorderBrush="Green">
+                <Button Click="SaveMesh">Save .mesh.ascii</Button>
+            </Border>
+            <Rectangle Fill="LightGray" Width="1" ></Rectangle>
+            <Border Grid.Row="2" Margin="5">
+                <Button Click="LoadBonesFile">Load BoneDict</Button>
+            </Border>
+            <Border Grid.Row="3" Margin="5" BorderBrush="Green">
+                <Button Click="SaveBones">Save BoneDict</Button>
+            </Border>
+            <Rectangle Fill="LightGray" Width="1" ></Rectangle>
+            <Border Grid.Row="5" Margin="5" BorderBrush="Red">
+                <Button Click="UnloadAll">Unload all</Button>
+            </Border>
+        </StackPanel>
 
         <TabControl Grid.Column="1" Grid.Row="1" Grid.RowSpan="5">
-            <TabItem Header="Bone Rename">
+            <TabItem Header="Rename">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
@@ -82,7 +83,7 @@
                         <RowDefinition/>
                     </Grid.RowDefinitions>
 
-                    <GroupBox Grid.ColumnSpan="3" Header="Filter bones">
+                    <GroupBox Grid.ColumnSpan="3" Header="Filter">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition/>
@@ -103,7 +104,7 @@
                             <CheckBox Name="onlyConflicting"  Grid.Row="3" Grid.ColumnSpan="2" HorizontalAlignment="Center" Checked="Filter_TextChanged" Unchecked="Filter_TextChanged" Content="Show conflicting translations"/>
                         </Grid>
                     </GroupBox>
-                    <GroupBox Grid.Column="3" Grid.ColumnSpan="3" Header="Bulk Rename bones">
+                    <GroupBox Grid.Column="3" Grid.ColumnSpan="3" Header="Bulk Rename">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="auto"/>
@@ -125,19 +126,35 @@
                         </Grid>
                     </GroupBox>
 
-                    <ScrollViewer Grid.ColumnSpan="6" Grid.Row="1">
-                        <Grid x:Name="BonesGrid">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition/>
-                                <ColumnDefinition Width="auto"/>
-                                <ColumnDefinition/>
-                                <ColumnDefinition/>
-                            </Grid.ColumnDefinitions>
-                        </Grid>
-                    </ScrollViewer>
+                    <TabControl Grid.ColumnSpan="6" Grid.Row="1" SelectionChanged="BonesorMeshesTab_Selected">
+                        <TabItem Header="Bones">
+                            <ScrollViewer>
+                                <Grid x:Name="BonesGrid">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="auto"/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Meshes">
+                            <ScrollViewer>
+                                <Grid x:Name="MeshesGrid">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition Width="auto"/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                </Grid>
+                            </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
                 </Grid>
             </TabItem>
-            <TabItem Header="Bone Reparent">
+            <TabItem Header="Reparent">
                 <Grid>
                     <TreeView x:Name="boneTree" MouseMove="BoneTree_MouseMove" SelectedItemChanged="BoneTree_SelectedItemChanged">
                     </TreeView>

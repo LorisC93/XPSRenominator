@@ -11,7 +11,7 @@ namespace XPSRenominator
     {
         public static string Clean(this string name)
         {
-            return name.ToLower().Replace('_', ' ').Trim();
+            return name.ToLower().Replace('_', ' ').Replace(':', ' ').Replace('|', ' ').Trim();
         }
 
         public static void Bind(this DependencyObject control, DependencyProperty property, object source, string field)
