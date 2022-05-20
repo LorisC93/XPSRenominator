@@ -159,12 +159,25 @@ namespace XPSRenominator
 
                     ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = mesh.RenderGroup, Margin = new(0, 0, 5, 0) };
                     meshRenderGroupComboBox.Bind(ComboBox.SelectedItemProperty, mesh, "RenderGroup");
-                    meshRenderGroupComboBox.SelectionChanged += delegate(object sender, SelectionChangedEventArgs e) { RenderTextures(); };
+                    meshRenderGroupComboBox.SelectionChanged += delegate(object sender, SelectionChangedEventArgs e) 
+                    {
+                        RenderTextures();
+                    };
                     groupBoxHeader.Children.Add(meshRenderGroupComboBox);
 
                     TextBlock meshNameTextBlock = new() { Text = mesh.TranslatedName };
                     meshNameTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
                     groupBoxHeader.Children.Add(meshNameTextBlock);
+
+                    TextBox meshRenderParameter1 = new() { Text = mesh.RenderParameters[0].ToString(), Margin = new(5, 0, 2, 0), MinWidth = 25 };
+                    TextBox meshRenderParameter2 = new() { Text = mesh.RenderParameters[1].ToString(), Margin = new(2, 0, 2, 0), MinWidth = 25 };
+                    TextBox meshRenderParameter3 = new() { Text = mesh.RenderParameters[2].ToString(), Margin = new(2, 0, 0, 0), MinWidth = 25 };
+                    meshRenderParameter1.Bind(TextBox.TextProperty, mesh, "RenderParameters[0]");
+                    meshRenderParameter2.Bind(TextBox.TextProperty, mesh, "RenderParameters[1]");
+                    meshRenderParameter3.Bind(TextBox.TextProperty, mesh, "RenderParameters[2]");
+                    groupBoxHeader.Children.Add(meshRenderParameter1);
+                    groupBoxHeader.Children.Add(meshRenderParameter2);
+                    groupBoxHeader.Children.Add(meshRenderParameter3);
 
                     GroupBox meshNameGroupBox = new() { Header = groupBoxHeader };
                     TexturesPanel.Children.Add(meshNameGroupBox);
@@ -296,7 +309,7 @@ namespace XPSRenominator
 
         private void LoadFile(string fileName)
         {
-            originalMeshAsciiName = fileName;
+            originalMeshAsciiName = String.Join("",fileName.SkipLast(".mesh.ascii".Length));
             loader.LoadAsciiFile(fileName);
 
             RenderBones();
@@ -365,7 +378,7 @@ namespace XPSRenominator
             };
             if (sfd.ShowDialog() == true)
             {
-                Progress.Maximum = loader.Bones.Count;
+                Progress.Maximum = loader.Bones.Where(b => b.OriginalName != b.TranslatedName).Count();
                 Progress.Value = 0;
                 Saving.Visibility = Visibility.Visible;
                 new Thread(() => loader.SaveBones(sfd.FileName, IncreaseProgress)).Start();
@@ -394,7 +407,7 @@ namespace XPSRenominator
                     if (!loader.SaveAscii(sfd.FileName, IncreaseProgress))
                     {
                         MessageBox.Show("conflicting bone and/or mesh names found, solve them before saving", "Confict found", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
-                        Saving.Visibility = Visibility.Hidden;
+                        Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
                     }
                 }).Start();
             }
@@ -498,6 +511,17 @@ namespace XPSRenominator
             if (sender is TabControl tabControl && tabControl.SelectedItem is TabItem tab)
             {
                 selectedTab = tab.Header.ToString()!;
+            }
+        }
+
+        private void LinkMaterials(object sender, RoutedEventArgs e)
+        {
+            foreach (Mesh m in loader.Meshes)
+            {
+                var first = loader.Meshes.First(m2 => m2.Textures[0].TranslatedName == m.Textures[0].TranslatedName);
+                m.RenderGroup = first.RenderGroup;
+                m.RenderParameters = new List<float>(first.RenderParameters).ToList();
+                m.Textures = first.Textures.Select(t => new Texture() { OriginalName = t.OriginalName, TranslatedName = t.TranslatedName, TranslatingName = t.TranslatingName, UvLayer = t.UvLayer }).ToList();
             }
         }
     }

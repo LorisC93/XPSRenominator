@@ -190,7 +190,7 @@ namespace XPSRenominator
             Bones.Where(b => b.FromMeshAscii).ToList().ForEach(b =>
             {
                 file.WriteLine(b.TranslatedName);
-                file.WriteLine((b.Parent == null ? "-1" : Bones.IndexOf(b.Parent).ToString()) + " # parent index");
+                file.WriteLine((b.Parent == null ? "-1" : Bones.Where(b => b.FromMeshAscii).ToList().IndexOf(b.Parent).ToString()) + " # parent index");
                 file.WriteLine(string.Join(" ", b.Position));
                 increaseProgress();
             });
@@ -221,7 +221,7 @@ namespace XPSRenominator
                     file.WriteLine(v.Color.R + " " + v.Color.G + " " + v.Color.B + " " + v.Color.A);
                     file.WriteLine(string.Join(' ', v.UV));
                     if (b.UvLayers == 2) file.WriteLine(string.Join(' ', v.UV2 ?? new double[2] { 0, 0 } ));
-                    file.WriteLine(string.Join(' ', v.Bones.Select(b => Bones.IndexOf(b.Bone))));
+                    file.WriteLine(string.Join(' ', v.Bones.Select(b => Bones.Where(b => b.FromMeshAscii).ToList().IndexOf(b.Bone))));
                     file.WriteLine(string.Join(' ', v.Bones.Select(b => b.Weight)));
                 });
                 file.WriteLine(b.Faces.Count + " # faces");

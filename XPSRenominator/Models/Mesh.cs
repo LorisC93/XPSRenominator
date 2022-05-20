@@ -13,6 +13,7 @@ namespace XPSRenominator.Models
         private string? translatingName = "";
         private string translatedName = "";
         private RenderGroup renderGroup = RenderGroup.OnlyDiffuse;
+        private List<float> renderParameters = new() { 1, 0, 0 };
 
         public string TranslatedName
         {
@@ -39,7 +40,14 @@ namespace XPSRenominator.Models
                 OnPropertyChanged();
             }
         }
-        public float[] RenderParameters { get; set; } = new float[3] { 1, 0, 0 };
+        public List<float> RenderParameters
+        {
+            get => renderParameters; set
+            {
+                renderParameters = value;
+                OnPropertyChanged();
+            }
+        }
         public string OriginalName { get; set; } = "";
         public int UvLayers { get; set; } = 1;
         public List<Texture> Textures { get; set; } = new();
@@ -74,7 +82,7 @@ namespace XPSRenominator.Models
             TranslatedName = OriginalName;
 
             if (paramsPresent)
-                RenderParameters = parts.TakeLast(3).Select(v => float.Parse(v)).ToArray();
+                RenderParameters = parts.TakeLast(3).Select(v => float.Parse(v)).ToList();
 
         }
     }

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator" Height="600" Width="750">
+        Title="XPS Renominator 2.0" Height="600" Width="750">
     <Window.Resources>
         <Style TargetType="Border">
             <Setter Property="BorderBrush" Value="Blue"/>
@@ -152,10 +152,16 @@
                             </ScrollViewer>
                         </TabItem>
                         <TabItem Header="Textures">
-                            <ScrollViewer>
-                                <StackPanel Orientation="Vertical" x:Name="TexturesPanel">
-                                </StackPanel>
-                            </ScrollViewer>
+                            <Grid>
+                                <Border BorderBrush="OrangeRed" Background="White" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="25, 0" Panel.ZIndex="1">
+                                    <Button Click="LinkMaterials">Link materials</Button>
+                                </Border>
+                                
+                                <ScrollViewer>
+                                    <StackPanel Orientation="Vertical" x:Name="TexturesPanel">
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Grid>
                         </TabItem>
                     </TabControl>
                 </Grid>
