@@ -1,123 +1,32 @@
 ﻿using System.Collections.Generic;
-using System.ComponentModel;
 using System.Drawing;
-using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace XPSRenominator.Models
 {
-    class Mesh : INotifyPropertyChanged
+    class Mesh : Translatable
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public Material Material { get; set; } = new();
 
-        private string? translatingName = "";
-        private string translatedName = "";
-        private RenderGroup renderGroup = RenderGroup.OnlyDiffuse;
-        private List<float> renderParameters = new() { 1, 0, 0 };
-
-        public string TranslatedName
-        {
-            get => translatedName; set
-            {
-                translatedName = value;
-                OnPropertyChanged();
-            }
-        }
-        public string? TranslatingName
-        {
-            get => translatingName; set
-            {
-                translatingName = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public RenderGroup RenderGroup
-        {
-            get => renderGroup; set
-            {
-                renderGroup = value;
-                OnPropertyChanged();
-            }
-        }
-        public List<float> RenderParameters
-        {
-            get => renderParameters; set
-            {
-                renderParameters = value;
-                OnPropertyChanged();
-            }
-        }
-        public string OriginalName { get; set; } = "";
         public int UvLayers { get; set; } = 1;
-        public List<Texture> Textures { get; set; } = new();
         public List<Vertex> Vertices { get; set; } = new();
         public List<Face> Faces { get; set; } = new();
-
-        protected void OnPropertyChanged([CallerMemberName] string? name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
-
-        public void SetFirstLine(string line)
-        {
-            string[] parts = line.Split('_');
-
-            RenderGroup = RenderGroup.ByID(int.Parse(parts[0]))!;
-
-            bool paramsPresent = parts.Length >= 5 && parts.TakeLast(3).All(p => float.TryParse(p, out float _));
-
-            if (parts.Length > 5 && paramsPresent)
-            {
-                OriginalName = string.Join('_', parts.Skip(1).SkipLast(3)).Clean();
-            }
-            else if (parts.Length > 2 && !paramsPresent)
-            {
-                OriginalName = string.Join('_', parts.Skip(1)).Clean();
-            }
-            else
-            {
-                OriginalName = parts[1].Clean();
-            }
-            TranslatedName = OriginalName;
-
-            if (paramsPresent)
-                RenderParameters = parts.TakeLast(3).Select(v => float.Parse(v)).ToList();
-
-        }
     }
-    class Texture : INotifyPropertyChanged
+
+    public class Material
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public RenderGroup RenderGroup { get; set; } = RenderGroup.OnlyDiffuse;
+        public float[] RenderParameters { get; set; } = new float[3] { 1, 0, 0 };
+        public List<Texture> Textures { get; set; } = new();
+    }
 
-        private string? translatingName = "";
-        private string translatedName = "";
-
-        public string OriginalName { get; set; } = "";
-        public string TranslatedName
-        {
-            get => translatedName; set
-            {
-                translatedName = value;
-                OnPropertyChanged();
-            }
-        }
-        public string? TranslatingName
-        {
-            get => translatingName; set
-            {
-                translatingName = value;
-                OnPropertyChanged();
-            }
-        }
+    public class Texture : Translatable
+    {
         public int UvLayer { get; set; } = 0;
 
-        protected void OnPropertyChanged([CallerMemberName] string? name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-        }
+        public override bool Equals(object? obj) => obj is Texture t && TranslatedName == t.TranslatedName && UvLayer == t.UvLayer;
+        public override int GetHashCode() => base.GetHashCode();
     }
-    class Vertex
+    public class Vertex
     {
         public double[] Position { get; set; } = new double[3]; //XYZ
         public double[] Normal { get; set; } = new double[3]; //XYZ
@@ -126,9 +35,9 @@ namespace XPSRenominator.Models
         public double[]? UV2 { get; set; } //UV
         public List<VertexBone> Bones { get; set; } = new();
     }
-    class Face
+    public class Face
     {
-        public double[] Position { get; set; } = new double[3];
+        public int[] Vertices { get; set; } = new int[3];
     }
     public class VertexBone
     {

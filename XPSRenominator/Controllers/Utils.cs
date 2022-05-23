@@ -5,7 +5,7 @@ using System.Windows.Data;
 using System.Linq;
 using XPSRenominator.Models;
 
-namespace XPSRenominator
+namespace XPSRenominator.Controllers
 {
     public static class Utils
     {
@@ -44,6 +44,11 @@ namespace XPSRenominator
         public static double[] ExtractDoubleArray(this string s)
         {
             return s.Trim().Split(' ').Select(v => double.Parse(v)).ToArray();
+        }
+
+        public static string RemoveComment(this string line)
+        {
+            return line.Split('#').First().Trim();
         }
     }
 }

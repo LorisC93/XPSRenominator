@@ -1,16 +1,13 @@
 ﻿using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using XPSRenominator.Controllers;
 using XPSRenominator.Models;
 
 namespace XPSRenominator
@@ -157,7 +154,7 @@ namespace XPSRenominator
                 {
                     StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal };
 
-                    ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = mesh.RenderGroup, Margin = new(0, 0, 5, 0) };
+                    ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = mesh.Material.RenderGroup, Margin = new(0, 0, 5, 0) };
                     meshRenderGroupComboBox.Bind(ComboBox.SelectedItemProperty, mesh, "RenderGroup");
                     meshRenderGroupComboBox.SelectionChanged += delegate(object sender, SelectionChangedEventArgs e) 
                     {
@@ -169,9 +166,9 @@ namespace XPSRenominator
                     meshNameTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
                     groupBoxHeader.Children.Add(meshNameTextBlock);
 
-                    TextBox meshRenderParameter1 = new() { Text = mesh.RenderParameters[0].ToString(), Margin = new(5, 0, 2, 0), MinWidth = 25 };
-                    TextBox meshRenderParameter2 = new() { Text = mesh.RenderParameters[1].ToString(), Margin = new(2, 0, 2, 0), MinWidth = 25 };
-                    TextBox meshRenderParameter3 = new() { Text = mesh.RenderParameters[2].ToString(), Margin = new(2, 0, 0, 0), MinWidth = 25 };
+                    TextBox meshRenderParameter1 = new() { Text = mesh.Material.RenderParameters[0].ToString(), Margin = new(5, 0, 2, 0), MinWidth = 25 };
+                    TextBox meshRenderParameter2 = new() { Text = mesh.Material.RenderParameters[1].ToString(), Margin = new(2, 0, 2, 0), MinWidth = 25 };
+                    TextBox meshRenderParameter3 = new() { Text = mesh.Material.RenderParameters[2].ToString(), Margin = new(2, 0, 0, 0), MinWidth = 25 };
                     meshRenderParameter1.Bind(TextBox.TextProperty, mesh, "RenderParameters[0]");
                     meshRenderParameter2.Bind(TextBox.TextProperty, mesh, "RenderParameters[1]");
                     meshRenderParameter3.Bind(TextBox.TextProperty, mesh, "RenderParameters[2]");
@@ -190,17 +187,17 @@ namespace XPSRenominator
                     texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
                     meshNameGroupBox.Content = texturesGrid;
 
-                    for (int i = 0; i < mesh.RenderGroup.SupportedTextureTypes.Count(); i++)
+                    for (int i = 0; i < mesh.Material.RenderGroup.SupportedTextureTypes.Count; i++)
                     {
-                        if (mesh.Textures.Count() <= i)
+                        if (mesh.Material.Textures.Count <= i)
                         {
-                            mesh.Textures.Add(new Texture());
+                            mesh.Material.Textures.Add(new Texture());
                         }
-                        Texture texture = mesh.Textures.ElementAt(i);
+                        Texture texture = mesh.Material.Textures.ElementAt(i);
 
                         texturesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
 
-                        TextBlock textureTypeTextBlock = new() { Text = mesh.RenderGroup.SupportedTextureTypes[i].Code(), Margin = new(0, 0, 5, 0) };
+                        TextBlock textureTypeTextBlock = new() { Text = mesh.Material.RenderGroup.SupportedTextureTypes[i].Code(), Margin = new(0, 0, 5, 0) };
                         Grid.SetRow(textureTypeTextBlock, texturesGrid.RowDefinitions.Count - 1);
                         Grid.SetColumn(textureTypeTextBlock, 0);
                         textureTypeTextBlock.Foreground = Brushes.Gray;
@@ -307,9 +304,9 @@ namespace XPSRenominator
             }
         }
 
-        private void LoadFile(string fileName)
+        private void LoadMeshAsciiFile(string fileName)
         {
-            originalMeshAsciiName = String.Join("",fileName.SkipLast(".mesh.ascii".Length));
+            originalMeshAsciiName = string.Join("",fileName.SkipLast(".mesh.ascii".Length));
             loader.LoadAsciiFile(fileName);
 
             RenderBones();
@@ -319,11 +316,11 @@ namespace XPSRenominator
             Progress.Dispatcher.Invoke(() => Progress.Visibility = Visibility.Visible);
         }
 
-        private void LoadMeshFile(object sender, RoutedEventArgs e)
+        private void LoadMeshFileDialog(object sender, RoutedEventArgs e)
         {
             SavingMessage.Content = "Loading, please wait.";
 
-            OpenFileDialog ofd = new OpenFileDialog()
+            OpenFileDialog ofd = new()
             {
                 CheckFileExists = true,
                 Title = "Select the .mesh.ascii file to edit",
@@ -335,11 +332,11 @@ namespace XPSRenominator
                 Saving.Visibility = Visibility.Visible;
                 Progress.Visibility = Visibility.Hidden;
 
-                LoadFile(ofd.FileName);
+                LoadMeshAsciiFile(ofd.FileName);
             }
         }
 
-        private void LoadBones(string fileName, bool keepAll = true)
+        private void LoadBonesFile(string fileName, bool keepAll = true)
         {
             originalBonedictName = fileName;
 
@@ -348,7 +345,7 @@ namespace XPSRenominator
             RenderBones();
         }
 
-        private void LoadBonesFile(object sender, RoutedEventArgs e)
+        private void LoadBonesFileDialog(object sender, RoutedEventArgs e)
         {
             SavingMessage.Content = "Loading, please wait.";
 
@@ -361,11 +358,11 @@ namespace XPSRenominator
             };
             if (ofd.ShowDialog() == true)
             {
-                LoadBones(ofd.FileName);
+                LoadBonesFile(ofd.FileName);
             }
         }
 
-        private void SaveBones(object sender, RoutedEventArgs e)
+        private void SaveBonesFileDialog(object sender, RoutedEventArgs e)
         {
             SavingMessage.Content = "Saving, please wait.";
 
@@ -385,7 +382,7 @@ namespace XPSRenominator
             }
         }
 
-        private void SaveMesh(object sender, RoutedEventArgs e)
+        private void SaveMeshFileDialog(object sender, RoutedEventArgs e)
         {
             SavingMessage.Content = "Saving, please wait.";
 
@@ -417,6 +414,7 @@ namespace XPSRenominator
         {
             loader.Bones.Clear();
             loader.Meshes.Clear();
+            MaterialManager.Materials.Clear();
             RenderBones();
             RenderMeshes();
             originalBonedictName = null;
@@ -438,8 +436,8 @@ namespace XPSRenominator
             string[] fileNames = (string[])e.Data.GetData(DataFormats.FileDrop);
             fileNames?.ToList().ForEach(fileName =>
             {
-                if (fileName.EndsWith(".ascii")) LoadFile(fileName);
-                if (fileName.EndsWith(".txt")) LoadBones(fileName);
+                if (fileName.EndsWith(".mesh.ascii")) LoadMeshAsciiFile(fileName);
+                if (fileName.EndsWith(".txt")) LoadBonesFile(fileName);
             });
         }
 
@@ -453,7 +451,7 @@ namespace XPSRenominator
         {
             loader.Bones.ForEach(b => b.TranslatingName = null);
             loader.Meshes.ForEach(b => b.TranslatingName = null);
-            loader.Meshes.SelectMany(m => m.Textures).ToList().ForEach(b => b.TranslatingName = null);
+            loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(b => b.TranslatingName = null);
 
             if (regexOriginal.Text.Length > 0)
             {
@@ -480,7 +478,7 @@ namespace XPSRenominator
                         {
                         }
                     });
-                    loader.Meshes.SelectMany(m => m.Textures).Where(b => r1.IsMatch(b.TranslatedName)).ToList().ForEach(b =>
+                    loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => r1.IsMatch(b.TranslatedName)).ToList().ForEach(b =>
                     {
                         try
                         {
@@ -497,12 +495,18 @@ namespace XPSRenominator
 
         private void ApplyRename(object sender, RoutedEventArgs e)
         {
-            if (selectedTab == "Bones")
-                loader.Bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
-            if (selectedTab == "Meshes")
-                loader.Meshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
-            if (selectedTab == "Textures")
-                loader.Meshes.SelectMany(m => m.Textures).Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+            switch (selectedTab)
+            {
+                case "Bones":
+                    loader.Bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+                    break;
+                case "Meshes":
+                    loader.Meshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+                    break;
+                case "Textures":
+                    loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+                    break;
+            }
             Regex_TextChanged(regexResult, null);
         }
 
@@ -518,10 +522,10 @@ namespace XPSRenominator
         {
             foreach (Mesh m in loader.Meshes)
             {
-                var first = loader.Meshes.First(m2 => m2.Textures[0].TranslatedName == m.Textures[0].TranslatedName);
-                m.RenderGroup = first.RenderGroup;
-                m.RenderParameters = new List<float>(first.RenderParameters).ToList();
-                m.Textures = first.Textures.Select(t => new Texture() { OriginalName = t.OriginalName, TranslatedName = t.TranslatedName, TranslatingName = t.TranslatingName, UvLayer = t.UvLayer }).ToList();
+                var first = loader.Meshes.First(m2 => m2.Material.Textures[0].TranslatedName == m.Material.Textures[0].TranslatedName);
+                m.Material.RenderGroup = first.Material.RenderGroup;
+                m.Material.RenderParameters = first.Material.RenderParameters;
+                m.Material.Textures = first.Material.Textures.Select(t => new Texture() { OriginalName = t.OriginalName, TranslatedName = t.TranslatedName, TranslatingName = t.TranslatingName, UvLayer = t.UvLayer }).ToList();
             }
         }
     }

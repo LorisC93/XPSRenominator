@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using XPSRenominator.Models;
 
-namespace XPSRenominator
+namespace XPSRenominator.Controllers
 {
     class MeshAsciiLoader
     {
@@ -24,9 +24,9 @@ namespace XPSRenominator
         {
             // bone number
             /* for each bone */
-            //bone name
-            //parent index
-            //position
+            //  bone name
+            //  parent index
+            //  position
 
             Bones.Clear();
 
@@ -58,7 +58,7 @@ namespace XPSRenominator
             // mesh number
             /* for each mesh */
             //  mesh type _ mesh name
-            //  uv layers number
+            //  uv layers number // 1 or 2
             //  texture number
             /***** for each texture *****/
             //      texture name
@@ -69,7 +69,7 @@ namespace XPSRenominator
             //      normal - 3 numbers
             //      color RGBA - 4 numbers
             //      UV - 2 numbers
-            //      UV2 - 2 numbers (only if uv layers number > 1)
+            //      UV2 - 2 numbers (only if uv layers number == 2)
             //      bone indices - n numbers
             //      bone weights - n numbers
             //  faces number
@@ -80,16 +80,24 @@ namespace XPSRenominator
 
             int pointer = 1 + Bones.Count * 3;
 
-            int meshCount = int.Parse(originalLines.ElementAt(pointer).Split('#').First());
+            int meshCount = int.Parse(originalLines.ElementAt(pointer).RemoveComment());
             pointer++;
             for (int i = 0; i < meshCount; i++)
             {
                 Mesh mesh = new();
-                mesh.SetFirstLine(originalLines[pointer++]);
-                mesh.UvLayers = int.Parse(originalLines[pointer++].Split('#').First());
-                int textureCount = int.Parse(originalLines[pointer++].Split('#').First());
+                (int renderGroup, string name, float[] parameters) = SplitFirstMeshLine(originalLines[pointer++]);
+                mesh.OriginalName = name;
+                mesh.TranslatedName = name;
+                mesh.UvLayers = int.Parse(originalLines[pointer++].RemoveComment());
+                int textureCount = int.Parse(originalLines[pointer++].RemoveComment());
+                List<Texture> textures = new();
                 for (int j = 0; j < textureCount; j++)
-                    mesh.Textures.Add(new() { OriginalName = originalLines[pointer].Clean(true), TranslatedName = originalLines[pointer++].Clean(true), UvLayer = int.Parse(originalLines[pointer++].Split('#').First()) });
+                {
+                    string textureName = originalLines[pointer++].Clean(true);
+                    int uvLayer = int.Parse(originalLines[pointer++].RemoveComment());
+                    textures.Add(new() { OriginalName = textureName, TranslatedName = textureName, UvLayer = uvLayer });
+                }
+                mesh.Material = MaterialManager.FindOrCreate(renderGroup, textures, parameters);
                 int verticesCount = int.Parse(originalLines[pointer++].Split('#').First());
                 for (int j = 0; j < verticesCount; j++)
                 {
@@ -103,12 +111,41 @@ namespace XPSRenominator
                         Bones = Utils.CreateVertexBones(originalLines[pointer++].ExtractIntArray(), originalLines[pointer++].ExtractDoubleArray(), Bones)
                     });
                 }
-                int faceCount = int.Parse(originalLines[pointer++].Split('#').First());
+                int faceCount = int.Parse(originalLines[pointer++].RemoveComment());
                 for (int j = 0; j < faceCount; j++)
-                    mesh.Faces.Add(new() { Position = originalLines[pointer++].ExtractDoubleArray() });
+                    mesh.Faces.Add(new() { Vertices = originalLines[pointer++].ExtractIntArray() });
 
                 Meshes.Add(mesh);
             }
+        }
+
+        private static (int, string, float[]) SplitFirstMeshLine(string line)
+        {
+            string[] parts = line.Split('_');
+
+            int renderGroupID = int.Parse(parts[0]);
+
+            bool paramsPresent = parts.Length >= 5 && parts.TakeLast(3).All(p => float.TryParse(p, out float _));
+
+            string name = "";
+            if (parts.Length > 5 && paramsPresent)
+            {
+                name = string.Join('_', parts.Skip(1).SkipLast(3)).Clean();
+            }
+            else if (parts.Length > 2 && !paramsPresent)
+            {
+                name = string.Join('_', parts.Skip(1)).Clean();
+            }
+            else
+            {
+                name = parts[1].Clean();
+            }
+
+            float[] parameters = new float[3] { 1, 0, 0 };
+            if (paramsPresent)
+                parameters = parts.TakeLast(3).Select(v => float.Parse(v)).ToArray();
+
+            return (renderGroupID, name, parameters);
         }
 
         public void AddBone(Bone? parent = null)
@@ -197,15 +234,15 @@ namespace XPSRenominator
             file.WriteLine(Meshes.Count + " # meshes");
             Meshes.ForEach(b =>
             {
-                file.WriteLine(b.RenderGroup.ID + "_" + b.TranslatedName + "_" + string.Join('_', b.RenderParameters));
+                file.WriteLine(b.Material.RenderGroup.ID + "_" + b.TranslatedName + "_" + string.Join('_', b.Material.RenderParameters));
                 file.WriteLine(b.UvLayers + " # uv layers");
-                file.WriteLine(b.RenderGroup.SupportedTextureTypes.Count + " # textures");
-                for (int i = 0; i < b.RenderGroup.SupportedTextureTypes.Count; i++)
+                file.WriteLine(b.Material.RenderGroup.SupportedTextureTypes.Count + " # textures");
+                for (int i = 0; i < b.Material.RenderGroup.SupportedTextureTypes.Count; i++)
                 {
-                    if (b.Textures.Count > i && !string.IsNullOrEmpty(b.Textures[i].TranslatedName))
+                    if (b.Material.Textures.Count > i && !string.IsNullOrEmpty(b.Material.Textures[i].TranslatedName))
                     {
-                        file.WriteLine(b.Textures[i].TranslatedName);
-                        file.WriteLine(b.Textures[i].UvLayer + " # uv layer index");
+                        file.WriteLine(b.Material.Textures[i].TranslatedName);
+                        file.WriteLine(b.Material.Textures[i].UvLayer + " # uv layer index");
                     }
                     else
                     {
@@ -220,14 +257,14 @@ namespace XPSRenominator
                     file.WriteLine(string.Join(' ', v.Normal));
                     file.WriteLine(v.Color.R + " " + v.Color.G + " " + v.Color.B + " " + v.Color.A);
                     file.WriteLine(string.Join(' ', v.UV));
-                    if (b.UvLayers == 2) file.WriteLine(string.Join(' ', v.UV2 ?? new double[2] { 0, 0 } ));
+                    if (b.UvLayers == 2) file.WriteLine(string.Join(' ', v.UV2 ?? new double[2] { 0, 0 }));
                     file.WriteLine(string.Join(' ', v.Bones.Select(b => Bones.Where(b => b.FromMeshAscii).ToList().IndexOf(b.Bone))));
                     file.WriteLine(string.Join(' ', v.Bones.Select(b => b.Weight)));
                 });
                 file.WriteLine(b.Faces.Count + " # faces");
                 b.Faces.ForEach(f =>
                 {
-                    file.WriteLine(string.Join(' ', f.Position));
+                    file.WriteLine(string.Join(' ', f.Vertices));
                 });
                 increaseProgress();
             });
