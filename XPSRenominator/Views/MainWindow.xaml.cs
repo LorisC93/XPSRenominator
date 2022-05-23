@@ -77,8 +77,8 @@ namespace XPSRenominator
                 TreeViewItem treeItem = new() { Header = bone.TranslatedName, Tag = bone, IsExpanded = true };
                 treeItem.Bind(HeaderedItemsControl.HeaderProperty, bone, "TranslatedName");
                 treeItem.AllowDrop = true;
-                treeItem.DragEnter += TreeItem_DragEnter;
-                treeItem.DragLeave += TreeItem_DragLeave;
+                treeItem.DragEnter += DragEnterHandler;
+                treeItem.DragLeave += DragLeaveHandler;
                 treeItem.Drop += TreeItem_Drop;
                 foreach (Bone child in loader.Bones.Where(b => b.Parent == bone && b.FromMeshAscii))
                 {
@@ -151,7 +151,7 @@ namespace XPSRenominator
 
                 foreach (Material material in MaterialManager.Materials)
                 {
-                    StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal };
+                    StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal, AllowDrop = true };
 
                     ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = material.RenderGroup, Margin = new(0, 0, 5, 0) };
                     meshRenderGroupComboBox.Bind(ComboBox.SelectedItemProperty, material, "RenderGroup");
@@ -160,10 +160,6 @@ namespace XPSRenominator
                         RenderTextures();
                     };
                     groupBoxHeader.Children.Add(meshRenderGroupComboBox);
-
-                    /*TextBlock meshNameTextBlock = new() { Text = mesh.TranslatedName };
-                    meshNameTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
-                    groupBoxHeader.Children.Add(meshNameTextBlock);*/
 
                     TextBox meshRenderParameter1 = new() { Text = material.RenderParameters[0].ToString(), Margin = new(5, 0, 2, 0), MinWidth = 25 };
                     TextBox meshRenderParameter2 = new() { Text = material.RenderParameters[1].ToString(), Margin = new(2, 0, 2, 0), MinWidth = 25 };
@@ -175,13 +171,15 @@ namespace XPSRenominator
                     groupBoxHeader.Children.Add(meshRenderParameter2);
                     groupBoxHeader.Children.Add(meshRenderParameter3);
 
-                    GroupBox meshNameGroupBox = new() { Header = groupBoxHeader };
+                    GroupBox meshNameGroupBox = new() { Header = groupBoxHeader, Tag = material, Padding = new(0, 2, 0, 2) };
+                    meshNameGroupBox.DragEnter += DragEnterHandler;
+                    meshNameGroupBox.DragLeave += DragLeaveHandler;
+                    meshNameGroupBox.Drop += MaterialGroup_Drop;
                     MaterialsPanel.Children.Add(meshNameGroupBox);
 
                     Grid texturesGrid = new();
                     texturesGrid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Auto) });
                     texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
-                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Auto) });
                     texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
                     texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
                     meshNameGroupBox.Content = texturesGrid;
@@ -194,59 +192,102 @@ namespace XPSRenominator
                         }
                         Texture texture = material.Textures.ElementAt(i);
 
-                        texturesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
+                        texturesGrid.RowDefinitions.Add(new RowDefinition() );
 
                         TextBlock textureTypeTextBlock = new() { Text = material.RenderGroup.SupportedTextureTypes[i].Code(), Margin = new(0, 0, 5, 0) };
                         Grid.SetRow(textureTypeTextBlock, texturesGrid.RowDefinitions.Count - 1);
                         Grid.SetColumn(textureTypeTextBlock, 0);
                         textureTypeTextBlock.Foreground = Brushes.Gray;
+                        textureTypeTextBlock.VerticalAlignment = VerticalAlignment.Center;
                         texturesGrid.Children.Add(textureTypeTextBlock);
-
-                        TextBlock originalNameTextBlock = new() { Text = texture.OriginalName };
-                        Grid.SetRow(originalNameTextBlock, texturesGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(originalNameTextBlock, 1);
-                        originalNameTextBlock.Bind(TextBlock.TextProperty, texture, "OriginalName");
-                        texturesGrid.Children.Add(originalNameTextBlock);
-
-                        TextBlock arrowTextBlock = new() { Text = "➔" };
-                        Grid.SetRow(arrowTextBlock, texturesGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(arrowTextBlock, 2);
-                        arrowTextBlock.Margin = new Thickness(0, 0, 5, 0);
-                        texturesGrid.Children.Add(arrowTextBlock);
 
                         TextBox translationTextBox = new() { Text = texture.TranslatedName };
                         Grid.SetRow(translationTextBox, texturesGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(translationTextBox, 3);
+                        Grid.SetColumn(translationTextBox, 1);
                         translationTextBox.Bind(TextBox.TextProperty, texture, "TranslatedName");
+                        translationTextBox.VerticalAlignment = VerticalAlignment.Center;
                         texturesGrid.Children.Add(translationTextBox);
 
                         TextBlock translatingTextBlock = new() { Text = texture.TranslatingName };
                         Grid.SetRow(translatingTextBlock, texturesGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(translatingTextBlock, 4);
+                        Grid.SetColumn(translatingTextBlock, 2);
                         translatingTextBlock.Foreground = Brushes.Red;
+                        translatingTextBlock.VerticalAlignment = VerticalAlignment.Center;
                         translatingTextBlock.Bind(TextBlock.TextProperty, texture, "TranslatingName");
                         texturesGrid.Children.Add(translatingTextBlock);
                     }
+
+                    StackPanel meshesPanel = new() { Orientation = Orientation.Vertical };
+                    Grid.SetRowSpan(meshesPanel, texturesGrid.RowDefinitions.Count);
+                    Grid.SetColumn(meshesPanel, 3);
+
+                    foreach (Mesh mesh in loader.Meshes.Where(m => m.Material == material))
+                    {
+                        TextBlock meshTextBlock = new() { Text = mesh.TranslatedName, Tag = mesh };
+                        meshTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
+                        meshesPanel.Children.Add(meshTextBlock);
+                    }
+
+                    texturesGrid.Children.Add(meshesPanel);
                 }
             });
         }
 
-        private void TreeItem_DragEnter(object sender, DragEventArgs e)
+
+        private void DragEnterHandler(object sender, DragEventArgs e)
         {
-            if (sender is TreeViewItem treeItem)
+            if (sender is Control control)
             {
-                treeItem.Background = Brushes.LightBlue;
+                control.Background = Brushes.LightBlue;
+                e.Handled = true;
+            }
+        }
+        private void DragLeaveHandler(object sender, DragEventArgs e)
+        {
+            if (sender is Control control)
+            {
+                control.Background = null;
                 e.Handled = true;
             }
         }
 
-        private void TreeItem_DragLeave(object sender, DragEventArgs e)
+        private void MaterialPanel_MouseMove(object sender, MouseEventArgs e)
         {
-            if (sender is TreeViewItem treeItem)
+            if (e.LeftButton == MouseButtonState.Pressed && e.Source is TextBlock tb && tb.Tag is Mesh m)
             {
-                treeItem.Background = null;
-                e.Handled = true;
+                DragDrop.DoDragDrop(MaterialsPanel, m, DragDropEffects.Move);
             }
+        }
+
+        private void MaterialGroup_Drop(object sender, DragEventArgs e)
+        {
+            GroupBox? target = sender as GroupBox;
+            Mesh? source = e.Data.GetData(typeof(Mesh)) as Mesh;
+            if (target?.Tag is Material material && source is Mesh mesh && mesh.Material != material)
+            {
+                if (loader.Meshes.Count(m => m.Material == mesh.Material) == 1)
+                    MaterialManager.Materials.Remove(mesh.Material);
+
+                mesh.Material = material;
+            }
+            DragLeaveHandler(sender, e);
+            e.Handled = true;
+            RenderTextures();
+        }
+        private void MaterialPanel_Drop(object sender, DragEventArgs e)
+        {
+            Mesh? source = e.Data.GetData(typeof(Mesh)) as Mesh;
+            if (source is Mesh mesh)
+            {
+                if (loader.Meshes.Count(m => m.Material == mesh.Material) == 1)
+                    MaterialManager.Materials.Remove(mesh.Material);
+
+                mesh.Material = new Material();
+                MaterialManager.Materials.Add(mesh.Material);
+            }
+            DragLeaveHandler(sender, e);
+            e.Handled = true;
+            RenderTextures();
         }
 
         private void BoneTree_MouseMove(object sender, MouseEventArgs e)
@@ -277,7 +318,7 @@ namespace XPSRenominator
                 draggedBone.Parent = targetBone;
                 target.Items.Add(source);
             }
-            TreeItem_DragLeave(sender, e);
+            DragLeaveHandler(sender, e);
             e.Handled = true;
         }
 

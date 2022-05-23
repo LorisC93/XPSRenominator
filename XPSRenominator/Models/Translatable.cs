@@ -36,7 +36,7 @@ namespace XPSRenominator.Models
 
             try
             {
-                if (Regex.IsMatch(TranslatedName, pattern))
+                if (!string.IsNullOrEmpty(pattern) && Regex.IsMatch(TranslatedName, pattern))
                 {
                     TranslatingName = Regex.Replace(TranslatedName, pattern, replacement);
                     return true;

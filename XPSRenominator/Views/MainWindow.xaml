@@ -153,18 +153,9 @@
                         </TabItem>
                         <TabItem Header="Textures">
                             <ScrollViewer>
-                                <Grid >
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="3*"/>
-                                        <ColumnDefinition/>
-                                    </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" x:Name="MaterialsPanel" Orientation="Vertical">
-                                        
-                                    </StackPanel>
-                                    <StackPanel Grid.Column="1" x:Name="MaterialMeshesPanel" Orientation="Vertical">
-                                        
-                                    </StackPanel>
-                                </Grid>
+                                <StackPanel Grid.Column="0" x:Name="MaterialsPanel" Orientation="Vertical" AllowDrop="True" MouseMove="MaterialPanel_MouseMove" Background="White" Drop="MaterialPanel_Drop" DragEnter="DragEnterHandler" DragLeave="DragLeaveHandler">
+
+                                </StackPanel>
                             </ScrollViewer>
                         </TabItem>
                     </TabControl>
