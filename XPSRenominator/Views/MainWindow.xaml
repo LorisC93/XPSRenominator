@@ -152,16 +152,20 @@
                             </ScrollViewer>
                         </TabItem>
                         <TabItem Header="Textures">
-                            <Grid>
-                                <Border BorderBrush="OrangeRed" Background="White" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="25, 0" Panel.ZIndex="1">
-                                    <Button Click="LinkMaterials">Link materials</Button>
-                                </Border>
-                                
-                                <ScrollViewer>
-                                    <StackPanel Orientation="Vertical" x:Name="TexturesPanel">
+                            <ScrollViewer>
+                                <Grid >
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="3*"/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" x:Name="MaterialsPanel" Orientation="Vertical">
+                                        
                                     </StackPanel>
-                                </ScrollViewer>
-                            </Grid>
+                                    <StackPanel Grid.Column="1" x:Name="MaterialMeshesPanel" Orientation="Vertical">
+                                        
+                                    </StackPanel>
+                                </Grid>
+                            </ScrollViewer>
                         </TabItem>
                     </TabControl>
                 </Grid>

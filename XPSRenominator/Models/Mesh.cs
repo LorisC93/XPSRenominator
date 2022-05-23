@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 
 namespace XPSRenominator.Models
 {
@@ -12,11 +14,35 @@ namespace XPSRenominator.Models
         public List<Face> Faces { get; set; } = new();
     }
 
-    public class Material
+    public class Material : INotifyPropertyChanged
     {
-        public RenderGroup RenderGroup { get; set; } = RenderGroup.OnlyDiffuse;
-        public float[] RenderParameters { get; set; } = new float[3] { 1, 0, 0 };
+        private float[] renderParameters = new float[3] { 1, 0, 0 };
+        private RenderGroup renderGroup = RenderGroup.OnlyDiffuse;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        public RenderGroup RenderGroup
+        {
+            get => renderGroup; set
+            {
+                renderGroup = value;
+                OnPropertyChanged();
+            }
+        }
+        public float[] RenderParameters
+        {
+            get => renderParameters; set
+            {
+                renderParameters = value;
+                OnPropertyChanged();
+            }
+        }
         public List<Texture> Textures { get; set; } = new();
+
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
     }
 
     public class Texture : Translatable

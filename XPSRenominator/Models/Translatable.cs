@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace XPSRenominator.Models
 {
@@ -28,6 +29,22 @@ namespace XPSRenominator.Models
         }
 
         public string OriginalName { get; set; } = "";
+
+        public bool ApplyRegex(string pattern, string replacement)
+        {
+            TranslatingName = null;
+
+            try
+            {
+                if (Regex.IsMatch(TranslatedName, pattern))
+                {
+                    TranslatingName = Regex.Replace(TranslatedName, pattern, replacement);
+                    return true;
+                }
+            }
+            catch { }
+            return false;
+        }
 
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
         {
