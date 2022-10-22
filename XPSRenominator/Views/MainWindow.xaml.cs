@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Windows;
@@ -27,6 +28,32 @@ namespace XPSRenominator
             InitializeComponent();
         }
 
+        private List<TreeViewItem> cutBones = new List<TreeViewItem>();
+
+        private IEnumerable<Bone> FilteredBones
+        {
+            get
+            {
+                bool containsCondition(Bone bone) => bone.OriginalName.Contains(beforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(afterFilter.Text.ToLower());
+                bool onlyUntranslatedCondition(Bone bone) => onlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
+                bool onlyConflictingCondition(Bone bone) => onlyConflicting.IsChecked == false || (bone.FromMeshAscii && loader.Bones.Where(b => b.FromMeshAscii && b != bone).Any(b => bone.TranslatedName == b.TranslatedName));
+
+                return loader.Bones.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b));
+            }
+        }
+        private IEnumerable<Mesh> FilteredMeshes
+        {
+            get
+            {
+
+                bool containsCondition(Mesh mesh) => mesh.OriginalName.Contains(beforeFilter.Text.ToLower()) && mesh.TranslatedName.Contains(afterFilter.Text.ToLower());
+                bool onlyUntranslatedCondition(Mesh mesh) => onlyUntranslated.IsChecked == false || mesh.OriginalName == mesh.TranslatedName;
+                bool onlyConflictingCondition(Mesh mesh) => onlyConflicting.IsChecked == false || loader.Meshes.Where(m => m != mesh).Any(b => mesh.TranslatedName == b.TranslatedName);
+
+                return loader.Meshes.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b));
+            }
+        }
+
         private void RenderBones()
         {
             BonesGrid.Dispatcher.Invoke(() =>
@@ -34,11 +61,7 @@ namespace XPSRenominator
                 BonesGrid.Children.Clear();
                 BonesGrid.RowDefinitions.Clear();
 
-                bool containsCondition(Bone bone) => bone.OriginalName.Contains(beforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(afterFilter.Text.ToLower());
-                bool onlyUntranslatedCondition(Bone bone) => onlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
-                bool onlyConflictingCondition(Bone bone) => onlyConflicting.IsChecked == false || (bone.FromMeshAscii && loader.Bones.Where(b => b.FromMeshAscii && b != bone).Any(b => bone.TranslatedName == b.TranslatedName));
-
-                foreach (var bone in loader.Bones.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b)))
+                foreach (var bone in FilteredBones)
                 {
                     BonesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
 
@@ -74,10 +97,35 @@ namespace XPSRenominator
         {
             void RenderTreeItem(Bone bone, TreeViewItem? item = null)
             {
-                TreeViewItem treeItem = new() { Header = bone.TranslatedName, Tag = bone, IsExpanded = true };
-                treeItem.Bind(HeaderedItemsControl.HeaderProperty, bone, "TranslatedName");
-                treeItem.AllowDrop = true;
+                StackPanel header = new()
+                {
+                    Orientation = Orientation.Horizontal
+                };
+                TextBlock name = new();
+                name.Bind(TextBlock.TextProperty, bone, "TranslatedName");
+                //TextBox posX = new() { Margin = new(5, 0, 0, 0), Width = 50 };
+                //posX.Bind(TextBox.TextProperty, bone, "Position[0]");
+                //TextBox posY = new() { Margin = new(5, 0, 0, 0), Width = 50 };
+                //posY.Bind(TextBox.TextProperty, bone, "Position[1]");
+                //TextBox posZ = new() { Margin = new(5, 0, 0, 0), Width = 50 };
+                //posZ.Bind(TextBox.TextProperty, bone, "Position[2]");
+                header.Children.Add(name);
+                //header.Children.Add(posX);
+                //header.Children.Add(posY);
+                //header.Children.Add(posZ);
+
+                TreeViewItem treeItem = new()
+                {
+                    Header = header,
+                    Tag = bone,
+                    IsExpanded = true,
+                    AllowDrop = true
+                };
                 treeItem.DragEnter += DragEnterHandler;
+                treeItem.DragOver += (sender, e) => {
+                    e.Effects = boneTree.SelectedItems.Any(t => CanDrop(t, (TreeViewItem)sender)) ? DragDropEffects.Move : DragDropEffects.None;
+                    e.Handled = true;
+                };
                 treeItem.DragLeave += DragLeaveHandler;
                 treeItem.Drop += TreeItem_Drop;
                 foreach (Bone child in loader.Bones.Where(b => b.Parent == bone && b.FromMeshAscii))
@@ -107,11 +155,7 @@ namespace XPSRenominator
                 MeshesGrid.Children.Clear();
                 MeshesGrid.RowDefinitions.Clear();
 
-                bool containsCondition(Mesh mesh) => mesh.OriginalName.Contains(beforeFilter.Text.ToLower()) && mesh.TranslatedName.Contains(afterFilter.Text.ToLower());
-                bool onlyUntranslatedCondition(Mesh mesh) => onlyUntranslated.IsChecked == false || mesh.OriginalName == mesh.TranslatedName;
-                bool onlyConflictingCondition(Mesh mesh) => onlyConflicting.IsChecked == false || loader.Meshes.Where(m => m != mesh).Any(b => mesh.TranslatedName == b.TranslatedName);
-
-                foreach (Mesh mesh in loader.Meshes.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b)))
+                foreach (Mesh mesh in FilteredMeshes)
                 {
                     MeshesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
 
@@ -292,15 +336,15 @@ namespace XPSRenominator
 
         private void BoneTree_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed && boneTree.SelectedItem is TreeViewItem draggingItem)
+            if (e.LeftButton == MouseButtonState.Pressed && boneTree.SelectedItems.Count > 0)
             {
-                DragDrop.DoDragDrop(boneTree.SelectedItem as TreeViewItem, draggingItem, DragDropEffects.Move);
+                DragDrop.DoDragDrop(boneTree, boneTree.SelectedItems, DragDropEffects.All);
             }
         }
 
-        private void BoneTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        private void BoneTree_SelectedItemsChanged(object sender, List<TreeViewItem> items)
         {
-            if (boneTree.SelectedItem is TreeViewItem item && item.Tag is Bone bone)
+            if (items.Count > 0 && items[0] is TreeViewItem item && item.Tag is Bone bone)
             {
                 selectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
                 selectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
@@ -308,19 +352,72 @@ namespace XPSRenominator
             }
         }
 
-        private void TreeItem_Drop(object sender, DragEventArgs e)
+        private bool CanDrop(TreeViewItem source, TreeViewItem? target) 
         {
-            TreeViewItem? target = sender as TreeViewItem;
-            TreeViewItem? source = e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
-            if (target?.Tag is Bone targetBone && source?.Tag is Bone draggedBone && draggedBone.Parent != null && draggedBone != targetBone && source.Parent is TreeViewItem parent)
+            bool DeepContains(TreeViewItem container, TreeViewItem item) => container == item || container.Items.Cast<TreeViewItem>().Any(i => DeepContains(i, item));
+            return target != null && !DeepContains(source, target) && source.Parent != target;
+        }
+
+        private void Reparent(TreeViewItem source, TreeViewItem target)
+        {
+            if (target?.Tag is Bone targetBone && source?.Tag is Bone draggedBone && source.Parent is TreeViewItem parent)
             {
                 parent.Items.Remove(source);
                 draggedBone.Parent = targetBone;
                 target.Items.Add(source);
             }
+        }
+
+        private void TreeItem_Drop(object sender, DragEventArgs e)
+        {
+            List<TreeViewItem> sources = new(boneTree.SelectedItems); // e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
+
+            TreeViewItem target = (TreeViewItem)sender;
+            sources.ForEach(source =>
+            {
+                if (CanDrop(source, target)) 
+                {
+                    Reparent(source, target);
+                }
+
+            });
             DragLeaveHandler(sender, e);
             e.Handled = true;
         }
+        private void CutCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = boneTree.SelectedItems.Count > 0;
+        }
+        private void CutCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; } ) ;
+            cutBones = new(boneTree.SelectedItems);
+            cutBones.ForEach(t => { t.Foreground = Brushes.Gray; t.FontWeight = FontWeights.Bold; });
+        }
+        private void PasteCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = cutBones.Count > 0 && boneTree.SelectedItems.Count == 1 && cutBones.Any(t => CanDrop(t, boneTree.SelectedItems.First()));
+        }
+        private void PasteCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            TreeViewItem target = boneTree.SelectedItems.First();
+            cutBones.ForEach(source =>
+            {
+                if (CanDrop(source, target))
+                {
+                    Reparent(source, target);
+                }
+
+            });
+            cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; });
+            cutBones.Clear();
+        }
+
+        private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            boneTreeScroll.ScrollToVerticalOffset(boneTreeScroll.VerticalOffset - e.Delta / 3);
+        }
+
 
         private void AddBone(object sender, RoutedEventArgs e)
         {
@@ -499,10 +596,10 @@ namespace XPSRenominator
             switch (selectedTab)
             {
                 case "Bones":
-                    loader.Bones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+                    FilteredBones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
                     break;
                 case "Meshes":
-                    loader.Meshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+                    FilteredMeshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
                     break;
                 case "Textures":
                     loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);

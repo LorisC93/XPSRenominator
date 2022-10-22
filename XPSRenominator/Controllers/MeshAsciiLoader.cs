@@ -155,7 +155,7 @@ namespace XPSRenominator.Controllers
                 OriginalName = "bone" + Bones.Count,
                 TranslatedName = "bone" + Bones.Count,
                 FromMeshAscii = true,
-                Position = parent?.Position ?? new double[3] { 0, 0, 0 },
+                Position = parent != null ? (double[])parent.Position.Clone() : new double[3] { 0, 0, 0 },
                 Parent = parent
             };
             Bones.Add(toAdd);
