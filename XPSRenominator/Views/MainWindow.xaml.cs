@@ -157,9 +157,17 @@ namespace XPSRenominator
 
                 foreach (Mesh mesh in FilteredMeshes)
                 {
-                    MeshesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
+                    ContextMenu contextMenu = new();
+                    MenuItem clone = new() { Header = "Clone" };
+                    MenuItem delete = new() { Header = "Delete" };
+                    clone.Click += (sender, e) => CloneMeshCommand_Executed(sender, mesh);
+                    delete.Click += (sender, e) => DeleteMeshCommand_Executed(sender, mesh);
+                    contextMenu.Items.Add(clone);
+                    contextMenu.Items.Add(delete);
 
-                    TextBlock originalNameTextBlock = new() { Text = mesh.OriginalName };
+                    MeshesGrid.RowDefinitions.Add(new() { Height = new GridLength(20) });
+
+                    TextBlock originalNameTextBlock = new() { Text = mesh.OriginalName, ContextMenu = contextMenu };
                     Grid.SetRow(originalNameTextBlock, MeshesGrid.RowDefinitions.Count - 1);
                     Grid.SetColumn(originalNameTextBlock, 0);
                     MeshesGrid.Children.Add(originalNameTextBlock);
@@ -384,21 +392,21 @@ namespace XPSRenominator
             DragLeaveHandler(sender, e);
             e.Handled = true;
         }
-        private void CutCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        private void CutBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
             e.CanExecute = boneTree.SelectedItems.Count > 0;
         }
-        private void CutCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        private void CutBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; } ) ;
             cutBones = new(boneTree.SelectedItems);
             cutBones.ForEach(t => { t.Foreground = Brushes.Gray; t.FontWeight = FontWeights.Bold; });
         }
-        private void PasteCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        private void PasteBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
             e.CanExecute = cutBones.Count > 0 && boneTree.SelectedItems.Count == 1 && cutBones.Any(t => CanDrop(t, boneTree.SelectedItems.First()));
         }
-        private void PasteCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        private void PasteBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             TreeViewItem target = boneTree.SelectedItems.First();
             cutBones.ForEach(source =>
@@ -412,32 +420,42 @@ namespace XPSRenominator
             cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; });
             cutBones.Clear();
         }
-
-        private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        private void NewBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            boneTreeScroll.ScrollToVerticalOffset(boneTreeScroll.VerticalOffset - e.Delta / 3);
+            e.CanExecute = boneTree.SelectedItems.Count == 1;
         }
-
-
-        private void AddBone(object sender, RoutedEventArgs e)
+        private void NewBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            if (boneTree.SelectedItem is TreeViewItem item && item.Tag is Bone bone)
-            {
-                loader.AddBone(bone);
-            }
-            else
-            {
-                loader.AddBone();
-            }
+            loader.AddBone(boneTree.SelectedItems.First().Tag as Bone);
             RenderBones();
         }
-        private void MakeRoot(object sender, RoutedEventArgs e)
+        private void MakeRootBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            if (boneTree.SelectedItem is TreeViewItem item && item.Tag is Bone bone)
+            e.CanExecute = boneTree.SelectedItems.Count == 1;
+        }
+        private void MakeRootBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+        {
+            if (boneTree.SelectedItems.First().Tag is Bone bone)
             {
                 loader.MakeRoot(bone);
                 RenderBones();
             }
+        }
+
+        private void CloneMeshCommand_Executed(object sender, Mesh mesh)
+        {
+            loader.CloneMesh(mesh);
+            RenderMeshes();
+        }
+        private void DeleteMeshCommand_Executed(object sender, Mesh mesh)
+        {
+            loader.DeleteMesh(mesh);
+            RenderMeshes();
+        }
+
+        private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            boneTreeScroll.ScrollToVerticalOffset(boneTreeScroll.VerticalOffset - e.Delta / 3);
         }
 
         private void LoadMeshAsciiFile(string fileName)
@@ -615,5 +633,11 @@ namespace XPSRenominator
                 selectedTab = tab.Header.ToString()!;
             }
         }
+
+        private void MenuItem_Click(object sender, RoutedEventArgs e)
+        {
+
+        }
+
     }
 }

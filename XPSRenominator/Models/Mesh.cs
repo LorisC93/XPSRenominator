@@ -1,20 +1,35 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Runtime.CompilerServices;
 
 namespace XPSRenominator.Models
 {
-    class Mesh : Translatable
+    class Mesh : Translatable, ICloneable
     {
         public Material Material { get; set; } = new();
 
         public int UvLayers { get; set; } = 1;
         public List<Vertex> Vertices { get; set; } = new();
         public List<Face> Faces { get; set; } = new();
+
+        public object Clone()
+        {
+            return new Mesh
+            {
+                OriginalName = this.OriginalName + "-clone",
+                TranslatedName = this.TranslatedName + "-clone",
+                Material = this.Material,
+                UvLayers = this.UvLayers,
+                Vertices = new(this.Vertices),
+                Faces = new(this.Faces),
+
+            };
+        }
     }
 
-    public class Material : INotifyPropertyChanged
+    public class Material : INotifyPropertyChanged, ICloneable
     {
         private float[] renderParameters = new float[3] { 1, 0, 0 };
         private RenderGroup renderGroup = RenderGroup.OnlyDiffuse;
@@ -42,6 +57,16 @@ namespace XPSRenominator.Models
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+        public object Clone()
+        {
+            return new Material
+            {
+                RenderGroup = this.RenderGroup,
+                RenderParameters = this.RenderParameters,
+                Textures = new (this.Textures)
+            };
         }
     }
 

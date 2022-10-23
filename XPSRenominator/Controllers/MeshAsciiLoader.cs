@@ -77,6 +77,7 @@ namespace XPSRenominator.Controllers
             //      3 numbers
 
             Meshes.Clear();
+            MaterialManager.Materials.Clear();
 
             int pointer = 1 + Bones.Count * 3;
 
@@ -172,6 +173,16 @@ namespace XPSRenominator.Controllers
             Bones.Where(b => b.Parent == null).ToList().ForEach(b => b.Parent = bone);
 
             Bones.Insert(0, bone);
+        }
+
+
+        public void CloneMesh(Mesh mesh)
+        {
+            Meshes.Add((Mesh)mesh.Clone());
+        }
+        public void DeleteMesh(Mesh mesh)
+        {
+            Meshes.Remove(mesh);
         }
 
         public void LoadBoneFile(string fileName, bool keepAll = true)
