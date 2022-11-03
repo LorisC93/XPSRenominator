@@ -39,7 +39,7 @@ namespace XPSRenominator.Models
         public static RenderGroup DiffuseLightmapBumpMaskSpecularAlpha { get; } = DiffuseLightmapBumpMaskSpecular.WithAlpha(23);
         public static RenderGroup DiffuseLightmapBumpSpecular { get; } = new() { ID = 24, SupportedTextureTypes = new() { TextureType.Diffuse, TextureType.Lightmap, TextureType.Bump, TextureType.Specular } };
         public static RenderGroup DiffuseLightmapBumpSpecularAlpha { get; } = DiffuseLightmapBumpSpecular.WithAlpha(25);
-        public static RenderGroup DiffuseBumpEnvironment { get; } = new() { ID = 26, SupportedTextureTypes = new() { TextureType.Diffuse, TextureType.Bump, TextureType.Environment } };
+        public static RenderGroup DiffuseBumpEnvironment { get; } = new() { ID = 26, SupportedTextureTypes = new() { TextureType.Diffuse, TextureType.Bump, TextureType.Environment, TextureType.Mask } };
         public static RenderGroup DiffuseBumpEnvironmentAlpha { get; } = DiffuseBumpEnvironment.WithAlpha(27);
         public static RenderGroup DiffuseLightmapBumpMaskEnvironment { get; } = new()
         {
