@@ -4,9 +4,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:XPSRenominator.Controls"
+        xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator 2.2" Height="600" Width="750">
+        Title="XPS Renominator 2.3" Height="600" Width="750">
     <Window.Resources>
         <Style TargetType="Border">
             <Setter Property="BorderBrush" Value="Blue"/>
@@ -155,7 +156,7 @@
                         <TabItem Header="Textures">
                             <ScrollViewer>
                                 <StackPanel Grid.Column="0" x:Name="MaterialsPanel" Orientation="Vertical" AllowDrop="True" MouseMove="MaterialPanel_MouseMove" Background="White" Drop="MaterialPanel_Drop" DragEnter="DragEnterHandler" DragLeave="DragLeaveHandler">
-
+                                    <colorpicker:PortableColorPicker Height="40" Width="40" ShowAlpha="False" />
                                 </StackPanel>
                             </ScrollViewer>
                         </TabItem>

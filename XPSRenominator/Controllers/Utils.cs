@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
-using System.Drawing;
 using System.Windows;
 using System.Windows.Data;
 using System.Linq;
 using XPSRenominator.Models;
+using System.Windows.Media;
 
 namespace XPSRenominator.Controllers
 {
@@ -27,7 +27,7 @@ namespace XPSRenominator.Controllers
             BindingOperations.SetBinding(control, property, binding);
         }
 
-        public static Color ToColor(this IEnumerable<int> RGBA)
+        public static Color ToColor(this IEnumerable<byte> RGBA)
         {
             return Color.FromArgb(RGBA.ElementAt(3), RGBA.ElementAt(0), RGBA.ElementAt(1), RGBA.ElementAt(2));
         }
@@ -40,6 +40,10 @@ namespace XPSRenominator.Controllers
         public static int[] ExtractIntArray(this string s)
         {
             return s.Trim().Split(' ').Select(v => int.Parse(v)).ToArray();
+        }
+        public static byte[] ExtractByteArray(this string s)
+        {
+            return s.Trim().Split(' ').Select(v => byte.Parse(v)).ToArray();
         }
         public static double[] ExtractDoubleArray(this string s)
         {

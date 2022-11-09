@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32;
+﻿using ColorPicker;
+using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -275,9 +276,18 @@ namespace XPSRenominator
 
                     foreach (Mesh mesh in loader.Meshes.Where(m => m.Material == material))
                     {
+                        StackPanel meshLine = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+                        PortableColorPicker colorPicker = new() { Width = 15, Height = 15, Margin = new(0, 0, 2, 0), ShowAlpha = false, SelectedColor = mesh.Vertices.First().Color };
+                        colorPicker.ColorChanged += (sender, e) => { mesh.Vertices.ForEach(v => v.Color = colorPicker.SelectedColor); };
+                        meshLine.Children.Add(colorPicker);
+
                         TextBlock meshTextBlock = new() { Text = mesh.TranslatedName, Tag = mesh };
                         meshTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
-                        meshesPanel.Children.Add(meshTextBlock);
+                        meshLine.Children.Add(meshTextBlock);
+
+
+                        meshesPanel.Children.Add(meshLine);
                     }
 
                     texturesGrid.Children.Add(meshesPanel);

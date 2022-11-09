@@ -106,7 +106,7 @@ namespace XPSRenominator.Controllers
                     {
                         Position = originalLines[pointer++].ExtractDoubleArray(),
                         Normal = originalLines[pointer++].ExtractDoubleArray(),
-                        Color = originalLines[pointer++].ExtractIntArray().ToColor(),
+                        Color = originalLines[pointer++].ExtractByteArray().ToColor(),
                         UV = originalLines[pointer++].ExtractDoubleArray(),
                         UV2 = mesh.UvLayers == 2 ? originalLines[pointer++].ExtractDoubleArray() : null,
                         Bones = Utils.CreateVertexBones(originalLines[pointer++].ExtractIntArray(), originalLines[pointer++].ExtractDoubleArray(), Bones)
