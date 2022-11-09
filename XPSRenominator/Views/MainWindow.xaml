@@ -156,7 +156,6 @@
                         <TabItem Header="Textures">
                             <ScrollViewer>
                                 <StackPanel Grid.Column="0" x:Name="MaterialsPanel" Orientation="Vertical" AllowDrop="True" MouseMove="MaterialPanel_MouseMove" Background="White" Drop="MaterialPanel_Drop" DragEnter="DragEnterHandler" DragLeave="DragLeaveHandler">
-                                    <colorpicker:PortableColorPicker Height="40" Width="40" ShowAlpha="False" />
                                 </StackPanel>
                             </ScrollViewer>
                         </TabItem>

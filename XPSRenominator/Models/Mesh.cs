@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
@@ -22,7 +23,7 @@ namespace XPSRenominator.Models
                 TranslatedName = this.TranslatedName + "-clone",
                 Material = this.Material,
                 UvLayers = this.UvLayers,
-                Vertices = new(this.Vertices),
+                Vertices = this.Vertices.Select(v => (Vertex)v.Clone()).ToList(),
                 Faces = new(this.Faces),
 
             };
@@ -77,7 +78,7 @@ namespace XPSRenominator.Models
         public override bool Equals(object? obj) => obj is Texture t && TranslatedName == t.TranslatedName && UvLayer == t.UvLayer;
         public override int GetHashCode() => base.GetHashCode();
     }
-    public class Vertex
+    public class Vertex: ICloneable
     {
         public double[] Position { get; set; } = new double[3]; //XYZ
         public double[] Normal { get; set; } = new double[3]; //XYZ
@@ -85,6 +86,19 @@ namespace XPSRenominator.Models
         public double[] UV { get; set; } = new double[2]; //UV
         public double[]? UV2 { get; set; } //UV
         public List<VertexBone> Bones { get; set; } = new();
+
+        public object Clone()
+        {
+            return new Vertex
+            {
+                Position = this.Position,
+                Normal = this.Normal,
+                Color = System.Windows.Media.Color.FromArgb(this.Color.A, this.Color.R, this.Color.G, this.Color.B),
+                UV = this.UV,
+                UV2 = this.UV2,
+                Bones = this.Bones,
+            };
+        }
     }
     public class Face
     {
