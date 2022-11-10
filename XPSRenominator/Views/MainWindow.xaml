@@ -7,7 +7,7 @@
         xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator 2.3" Height="600" Width="750">
+        Title="XPS Renominator 3.0" Height="600" Width="750">
     <Window.Resources>
         <Style TargetType="Border">
             <Setter Property="BorderBrush" Value="Blue"/>
@@ -50,21 +50,21 @@
                 <MenuItem Header="How to use Renominator?" Click="RenominatorUsage"/>
                 <MenuItem Header="What is BoneDict?" Click="BoneDictExplanation"/>
             </MenuItem-->
-            <Border Grid.Row="1" Margin="5">
+            <Border Margin="5">
                 <Button Click="LoadMeshFileDialog">Load .mesh.ascii</Button>
             </Border>
-            <Border Grid.Row="4" Margin="5" BorderBrush="Green">
+            <Border Margin="5" BorderBrush="Green">
                 <Button Click="SaveMeshFileDialog">Save .mesh.ascii</Button>
             </Border>
             <Rectangle Fill="LightGray" Width="1" ></Rectangle>
-            <Border Grid.Row="2" Margin="5">
+            <Border Margin="5">
                 <Button Click="LoadBonesFileDialog">Load BoneDict</Button>
             </Border>
-            <Border Grid.Row="3" Margin="5" BorderBrush="Green">
+            <Border Margin="5" BorderBrush="Green">
                 <Button Click="SaveBonesFileDialog">Save BoneDict</Button>
             </Border>
             <Rectangle Fill="LightGray" Width="1" ></Rectangle>
-            <Border Grid.Row="5" Margin="5" BorderBrush="Red">
+            <Border Margin="5" BorderBrush="Red">
                 <Button Click="UnloadAll">Unload all</Button>
             </Border>
         </StackPanel>

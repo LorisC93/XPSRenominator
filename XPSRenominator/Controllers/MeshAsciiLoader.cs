@@ -8,19 +8,20 @@ namespace XPSRenominator.Controllers
 {
     class MeshAsciiLoader
     {
-        private List<string> originalLines = new();
+        //private List<string> originalLines = new();
         public List<Bone> Bones { get; private set; } = new();
         public List<Mesh> Meshes { get; private set; } = new();
 
         public void LoadAsciiFile(string fileName)
         {
-            originalLines = File.ReadLines(fileName).ToList();
+            List<string> originalLines = File.ReadLines(fileName).ToList();
 
-            LoadBones();
-            LoadMeshes();
+            List<Bone> mergingBones = LoadBones(originalLines);
+            MergeBones(mergingBones);
+            Meshes.AddRange(LoadMeshes(originalLines, mergingBones));
         }
 
-        private void LoadBones()
+        private static List<Bone> LoadBones(List<string> originalLines)
         {
             // bone number
             /* for each bone */
@@ -28,7 +29,9 @@ namespace XPSRenominator.Controllers
             //  parent index
             //  position
 
-            Bones.Clear();
+            //Bones.Clear();
+            //bool merge = Bones.Count > 0;
+            List<Bone> mergingBones = new();
 
             int boneCount = int.Parse(originalLines.First().Split('#').First());
 
@@ -36,6 +39,7 @@ namespace XPSRenominator.Controllers
             for (int i = 1; i <= boneCount * 3; i += 3)
             {
                 string name = originalLines[i].Clean();
+
                 int parentIndex = int.Parse(originalLines[i + 1].Split('#').First());
                 Bone bone = new()
                 {
@@ -45,15 +49,44 @@ namespace XPSRenominator.Controllers
                     FromMeshAscii = true
                 };
                 parentIndexes.Add(bone, parentIndex);
-                Bones.Add(bone);
+                //if (merge)
+                //{
+                    mergingBones.Add(bone);
+                //    if (!Bones.Exists(b => b.TranslatedName == name))
+                //        Bones.Add(bone);
+                //}
+                //else
+                //    Bones.Add(bone);
             }
-            foreach (Bone bone in Bones)
+            foreach (Bone bone in mergingBones)
             {
                 int parentIndex = parentIndexes[bone];
-                bone.Parent = parentIndex == -1 ? null : Bones[parentIndex];
+                bone.Parent = parentIndex == -1 ? null : mergingBones[parentIndex];
             }
+            return mergingBones;
         }
-        private void LoadMeshes()
+        private void MergeBones(List<Bone> list2) 
+        {
+            for (int i = 0; i < list2.Count; i++)
+            {
+                string name = list2.ElementAt(i).TranslatedName;
+                if (Bones.Exists(b => b.TranslatedName == name))
+                {
+                    list2.RemoveAt(i);
+                    list2.Insert(i, Bones.Find(b => b.TranslatedName == name)!);
+                }
+            }
+
+            list2.Except(Bones).ToList().ForEach(mergingBone =>
+            {
+                if (mergingBone.Parent != null)
+                    mergingBone.Parent = Bones.Find(b => b.TranslatedName == mergingBone.Parent.TranslatedName);
+
+                Bones.Add(mergingBone);
+            });
+        }
+
+        private static List<Mesh> LoadMeshes(List<string> originalLines, List<Bone> bonesToUse)
         {
             // mesh number
             /* for each mesh */
@@ -76,10 +109,12 @@ namespace XPSRenominator.Controllers
             /***** for each face *****/
             //      3 numbers
 
-            Meshes.Clear();
-            MaterialManager.Materials.Clear();
+            //Meshes.Clear();
+            //MaterialManager.Materials.Clear();
 
-            int pointer = 1 + Bones.Count * 3;
+            List<Mesh> mergingMeshes = new ();
+
+            int pointer = 1 + bonesToUse.Count * 3;
 
             int meshCount = int.Parse(originalLines.ElementAt(pointer).RemoveComment());
             pointer++;
@@ -109,15 +144,16 @@ namespace XPSRenominator.Controllers
                         Color = originalLines[pointer++].ExtractByteArray().ToColor(),
                         UV = originalLines[pointer++].ExtractDoubleArray(),
                         UV2 = mesh.UvLayers == 2 ? originalLines[pointer++].ExtractDoubleArray() : null,
-                        Bones = Utils.CreateVertexBones(originalLines[pointer++].ExtractIntArray(), originalLines[pointer++].ExtractDoubleArray(), Bones)
+                        Bones = Utils.CreateVertexBones(originalLines[pointer++].ExtractIntArray(), originalLines[pointer++].ExtractDoubleArray(), bonesToUse)
                     });
                 }
                 int faceCount = int.Parse(originalLines[pointer++].RemoveComment());
                 for (int j = 0; j < faceCount; j++)
                     mesh.Faces.Add(new() { Vertices = originalLines[pointer++].ExtractIntArray() });
 
-                Meshes.Add(mesh);
+                mergingMeshes.Add(mesh);
             }
+            return mergingMeshes;
         }
 
         private static (int, string, float[]) SplitFirstMeshLine(string line)

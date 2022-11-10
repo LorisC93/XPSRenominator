@@ -470,7 +470,8 @@ namespace XPSRenominator
 
         private void LoadMeshAsciiFile(string fileName)
         {
-            originalMeshAsciiName = string.Join("",fileName.SkipLast(".mesh.ascii".Length));
+            originalMeshAsciiName ??= string.Join("",fileName.SkipLast(".mesh.ascii".Length));
+
             loader.LoadAsciiFile(fileName);
 
             RenderBones();
