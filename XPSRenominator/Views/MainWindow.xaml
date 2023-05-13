@@ -128,7 +128,7 @@
                         </Grid>
                     </GroupBox>
 
-                    <TabControl Grid.ColumnSpan="6" Grid.Row="1" SelectionChanged="BonesorMeshesTab_Selected">
+                    <TabControl Grid.ColumnSpan="6" Grid.Row="1" SelectionChanged="BonesOrMeshesTab_Selected">
                         <TabItem Header="Bones">
                             <ScrollViewer>
                                 <Grid x:Name="BonesGrid">

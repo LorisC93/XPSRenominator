@@ -2,10 +2,12 @@
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using XPSRenominator.Controllers;
@@ -19,39 +21,38 @@ namespace XPSRenominator
     /// </summary>
     public partial class MainWindow : Window
     {
-        private readonly MeshAsciiLoader loader = new();
-        private string? originalMeshAsciiName;
-        private string? originalBonedictName;
-        private string selectedTab = "Bones";
+        private readonly MeshAsciiLoader _loader = new();
+        private string? _originalMeshAsciiName;
+        private string? _originalBonedictName;
+        private string _selectedTab = "Bones";
 
         public MainWindow()
         {
             InitializeComponent();
         }
 
-        private List<TreeViewItem> cutBones = new List<TreeViewItem>();
+        private List<TreeViewItem> _cutBones = new();
 
         private IEnumerable<Bone> FilteredBones
         {
             get
             {
-                bool containsCondition(Bone bone) => bone.OriginalName.Contains(beforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(afterFilter.Text.ToLower());
-                bool onlyUntranslatedCondition(Bone bone) => onlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
-                bool onlyConflictingCondition(Bone bone) => onlyConflicting.IsChecked == false || (bone.FromMeshAscii && loader.Bones.Where(b => b.FromMeshAscii && b != bone).Any(b => bone.TranslatedName == b.TranslatedName));
+                bool ContainsCondition(Translatable bone) => bone.OriginalName.Contains(beforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(afterFilter.Text.ToLower());
+                bool OnlyUntranslatedCondition(Translatable bone) => onlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
+                bool OnlyConflictingCondition(Bone bone) => onlyConflicting.IsChecked == false || (bone.FromMeshAscii && _loader.Bones.Where(b => b.FromMeshAscii && b != bone).Any(b => bone.TranslatedName == b.TranslatedName));
 
-                return loader.Bones.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b));
+                return _loader.Bones.Where(b => ContainsCondition(b) && OnlyUntranslatedCondition(b) && OnlyConflictingCondition(b));
             }
         }
         private IEnumerable<Mesh> FilteredMeshes
         {
             get
             {
+                bool ContainsCondition(Translatable mesh) => mesh.OriginalName.Contains(beforeFilter.Text.ToLower()) && mesh.TranslatedName.Contains(afterFilter.Text.ToLower());
+                bool OnlyUntranslatedCondition(Translatable mesh) => onlyUntranslated.IsChecked == false || mesh.OriginalName == mesh.TranslatedName;
+                bool OnlyConflictingCondition(Translatable mesh) => onlyConflicting.IsChecked == false || _loader.Meshes.Where(m => m != mesh).Any(b => mesh.TranslatedName == b.TranslatedName);
 
-                bool containsCondition(Mesh mesh) => mesh.OriginalName.Contains(beforeFilter.Text.ToLower()) && mesh.TranslatedName.Contains(afterFilter.Text.ToLower());
-                bool onlyUntranslatedCondition(Mesh mesh) => onlyUntranslated.IsChecked == false || mesh.OriginalName == mesh.TranslatedName;
-                bool onlyConflictingCondition(Mesh mesh) => onlyConflicting.IsChecked == false || loader.Meshes.Where(m => m != mesh).Any(b => mesh.TranslatedName == b.TranslatedName);
-
-                return loader.Meshes.Where(b => containsCondition(b) && onlyUntranslatedCondition(b) && onlyConflictingCondition(b));
+                return _loader.Meshes.Where(b => ContainsCondition(b) && OnlyUntranslatedCondition(b) && OnlyConflictingCondition(b));
             }
         }
 
@@ -96,7 +97,7 @@ namespace XPSRenominator
 
         private void RenderTree()
         {
-            void RenderTreeItem(Bone bone, TreeViewItem? item = null)
+            void RenderTreeItem(Bone bone, ItemsControl? item = null)
             {
                 StackPanel header = new()
                 {
@@ -129,7 +130,7 @@ namespace XPSRenominator
                 };
                 treeItem.DragLeave += DragLeaveHandler;
                 treeItem.Drop += TreeItem_Drop;
-                foreach (Bone child in loader.Bones.Where(b => b.Parent == bone && b.FromMeshAscii))
+                foreach (Bone child in _loader.Bones.Where(b => b.Parent == bone && b.FromMeshAscii))
                 {
                     RenderTreeItem(child, treeItem);
                 }
@@ -142,7 +143,7 @@ namespace XPSRenominator
             boneTree.Dispatcher.Invoke(() =>
             {
                 boneTree.Items.Clear();
-                foreach (Bone bone in loader.Bones.Where(b => b.Parent == null && b.FromMeshAscii))
+                foreach (Bone bone in _loader.Bones.Where(b => b.Parent == null && b.FromMeshAscii))
                 {
                     RenderTreeItem(bone);
                 }
@@ -206,17 +207,17 @@ namespace XPSRenominator
                 {
                     StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal, AllowDrop = true };
 
-                    ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = material.RenderGroup, Margin = new(0, 0, 5, 0) };
-                    meshRenderGroupComboBox.Bind(ComboBox.SelectedItemProperty, material, "RenderGroup");
-                    meshRenderGroupComboBox.SelectionChanged += delegate(object sender, SelectionChangedEventArgs e) 
+                    ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = material.RenderGroup, Margin = new Thickness(0, 0, 5, 0) };
+                    meshRenderGroupComboBox.Bind(Selector.SelectedItemProperty, material, "RenderGroup");
+                    meshRenderGroupComboBox.SelectionChanged += delegate
                     {
                         RenderTextures();
                     };
                     groupBoxHeader.Children.Add(meshRenderGroupComboBox);
 
-                    TextBox meshRenderParameter1 = new() { Text = material.RenderParameters[0].ToString(), Margin = new(5, 0, 2, 0), MinWidth = 25 };
-                    TextBox meshRenderParameter2 = new() { Text = material.RenderParameters[1].ToString(), Margin = new(2, 0, 2, 0), MinWidth = 25 };
-                    TextBox meshRenderParameter3 = new() { Text = material.RenderParameters[2].ToString(), Margin = new(2, 0, 0, 0), MinWidth = 25 };
+                    TextBox meshRenderParameter1 = new() { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25 };
+                    TextBox meshRenderParameter2 = new() { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25 };
+                    TextBox meshRenderParameter3 = new() { Text = material.RenderParameters[2].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 0, 0), MinWidth = 25 };
                     meshRenderParameter1.Bind(TextBox.TextProperty, material, "RenderParameters[0]");
                     meshRenderParameter2.Bind(TextBox.TextProperty, material, "RenderParameters[1]");
                     meshRenderParameter3.Bind(TextBox.TextProperty, material, "RenderParameters[2]");
@@ -224,7 +225,7 @@ namespace XPSRenominator
                     groupBoxHeader.Children.Add(meshRenderParameter2);
                     groupBoxHeader.Children.Add(meshRenderParameter3);
 
-                    GroupBox meshNameGroupBox = new() { Header = groupBoxHeader, Tag = material, Padding = new(0, 2, 0, 2) };
+                    GroupBox meshNameGroupBox = new() { Header = groupBoxHeader, Tag = material, Padding = new Thickness(0, 2, 0, 2) };
                     meshNameGroupBox.DragEnter += DragEnterHandler;
                     meshNameGroupBox.DragLeave += DragLeaveHandler;
                     meshNameGroupBox.Drop += MaterialGroup_Drop;
@@ -274,11 +275,11 @@ namespace XPSRenominator
                     Grid.SetRowSpan(meshesPanel, texturesGrid.RowDefinitions.Count);
                     Grid.SetColumn(meshesPanel, 3);
 
-                    foreach (Mesh mesh in loader.Meshes.Where(m => m.Material == material))
+                    foreach (Mesh mesh in _loader.Meshes.Where(m => m.Material == material))
                     {
                         StackPanel meshLine = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
-                        PortableColorPicker colorPicker = new() { Width = 15, Height = 15, Margin = new(0, 0, 2, 0), ShowAlpha = false, SelectedColor = mesh.Vertices.First().Color };
+                        PortableColorPicker colorPicker = new() { Width = 15, Height = 15, Margin = new Thickness(0, 0, 2, 0), ShowAlpha = false, SelectedColor = mesh.Vertices.First().Color };
                         colorPicker.ColorChanged += (sender, e) => { mesh.Vertices.ForEach(v => v.Color = colorPicker.SelectedColor); };
                         meshLine.Children.Add(colorPicker);
 
@@ -298,24 +299,20 @@ namespace XPSRenominator
 
         private void DragEnterHandler(object sender, DragEventArgs e)
         {
-            if (sender is Control control)
-            {
-                control.Background = Brushes.LightBlue;
-                e.Handled = true;
-            }
+            if (sender is not Control control) return;
+            control.Background = Brushes.LightBlue;
+            e.Handled = true;
         }
         private void DragLeaveHandler(object sender, DragEventArgs e)
         {
-            if (sender is Control control)
-            {
-                control.Background = null;
-                e.Handled = true;
-            }
+            if (sender is not Control control) return;
+            control.Background = null;
+            e.Handled = true;
         }
 
         private void MaterialPanel_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed && e.Source is TextBlock tb && tb.Tag is Mesh m)
+            if (e is { LeftButton: MouseButtonState.Pressed, Source: TextBlock { Tag: Mesh m } })
             {
                 DragDrop.DoDragDrop(MaterialsPanel, m, DragDropEffects.Move);
             }
@@ -323,14 +320,14 @@ namespace XPSRenominator
 
         private void MaterialGroup_Drop(object sender, DragEventArgs e)
         {
-            GroupBox? target = sender as GroupBox;
-            Mesh? source = e.Data.GetData(typeof(Mesh)) as Mesh;
-            if (target?.Tag is Material material && source is Mesh mesh && mesh.Material != material)
+            var target = sender as GroupBox;
+            var source = e.Data.GetData(typeof(Mesh)) as Mesh;
+            if (target?.Tag is Material material && source is not null && source.Material != material)
             {
-                if (loader.Meshes.Count(m => m.Material == mesh.Material) == 1)
-                    MaterialManager.Materials.Remove(mesh.Material);
+                if (_loader.Meshes.Count(m => m.Material == source.Material) == 1)
+                    MaterialManager.Materials.Remove(source.Material);
 
-                mesh.Material = material;
+                source.Material = material;
             }
             DragLeaveHandler(sender, e);
             e.Handled = true;
@@ -338,10 +335,9 @@ namespace XPSRenominator
         }
         private void MaterialPanel_Drop(object sender, DragEventArgs e)
         {
-            Mesh? source = e.Data.GetData(typeof(Mesh)) as Mesh;
-            if (source is Mesh mesh)
+            if (e.Data.GetData(typeof(Mesh)) is Mesh mesh)
             {
-                if (loader.Meshes.Count(m => m.Material == mesh.Material) == 1)
+                if (_loader.Meshes.Count(m => m.Material == mesh.Material) == 1)
                     MaterialManager.Materials.Remove(mesh.Material);
 
                 mesh.Material = new Material();
@@ -362,35 +358,31 @@ namespace XPSRenominator
 
         private void BoneTree_SelectedItemsChanged(object sender, List<TreeViewItem> items)
         {
-            if (items.Count > 0 && items[0] is TreeViewItem item && item.Tag is Bone bone)
-            {
-                selectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
-                selectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
-                selectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position[2]");
-            }
+            if (items.Count <= 0 || items[0] is not { Tag: Bone bone }) return;
+            selectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
+            selectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
+            selectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position[2]");
         }
 
-        private bool CanDrop(TreeViewItem source, TreeViewItem? target) 
+        private static bool CanDrop(ItemsControl source, TreeViewItem? target) 
         {
-            bool DeepContains(TreeViewItem container, TreeViewItem item) => container == item || container.Items.Cast<TreeViewItem>().Any(i => DeepContains(i, item));
+            bool DeepContains(ItemsControl container, TreeViewItem item) => container == item || container.Items.Cast<TreeViewItem>().Any(i => DeepContains(i, item));
             return target != null && !DeepContains(source, target) && source.Parent != target;
         }
 
-        private void Reparent(TreeViewItem source, TreeViewItem target)
+        private static void Reparent(FrameworkElement source, ItemsControl target)
         {
-            if (target?.Tag is Bone targetBone && source?.Tag is Bone draggedBone && source.Parent is TreeViewItem parent)
-            {
-                parent.Items.Remove(source);
-                draggedBone.Parent = targetBone;
-                target.Items.Add(source);
-            }
+            if (target.Tag is not Bone targetBone || source.Tag is not Bone draggedBone || source.Parent is not TreeViewItem parent) return;
+            parent.Items.Remove(source);
+            draggedBone.Parent = targetBone;
+            target.Items.Add(source);
         }
 
         private void TreeItem_Drop(object sender, DragEventArgs e)
         {
             List<TreeViewItem> sources = new(boneTree.SelectedItems); // e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
 
-            TreeViewItem target = (TreeViewItem)sender;
+            var target = (TreeViewItem)sender;
             sources.ForEach(source =>
             {
                 if (CanDrop(source, target)) 
@@ -408,18 +400,18 @@ namespace XPSRenominator
         }
         private void CutBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; } ) ;
-            cutBones = new(boneTree.SelectedItems);
-            cutBones.ForEach(t => { t.Foreground = Brushes.Gray; t.FontWeight = FontWeights.Bold; });
+            _cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; } ) ;
+            _cutBones = new List<TreeViewItem>(boneTree.SelectedItems);
+            _cutBones.ForEach(t => { t.Foreground = Brushes.Gray; t.FontWeight = FontWeights.Bold; });
         }
         private void PasteBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            e.CanExecute = cutBones.Count > 0 && boneTree.SelectedItems.Count == 1 && cutBones.Any(t => CanDrop(t, boneTree.SelectedItems.First()));
+            e.CanExecute = _cutBones.Count > 0 && boneTree.SelectedItems.Count == 1 && _cutBones.Any(t => CanDrop(t, boneTree.SelectedItems.First()));
         }
         private void PasteBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            TreeViewItem target = boneTree.SelectedItems.First();
-            cutBones.ForEach(source =>
+            var target = boneTree.SelectedItems.First();
+            _cutBones.ForEach(source =>
             {
                 if (CanDrop(source, target))
                 {
@@ -427,8 +419,8 @@ namespace XPSRenominator
                 }
 
             });
-            cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; });
-            cutBones.Clear();
+            _cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; });
+            _cutBones.Clear();
         }
         private void NewBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
@@ -436,7 +428,7 @@ namespace XPSRenominator
         }
         private void NewBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            loader.AddBone(boneTree.SelectedItems.First().Tag as Bone);
+            _loader.AddBone(boneTree.SelectedItems.First().Tag as Bone);
             RenderBones();
         }
         private void MakeRootBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -445,21 +437,19 @@ namespace XPSRenominator
         }
         private void MakeRootBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            if (boneTree.SelectedItems.First().Tag is Bone bone)
-            {
-                loader.MakeRoot(bone);
-                RenderBones();
-            }
+            if (boneTree.SelectedItems.First().Tag is not Bone bone) return;
+            _loader.MakeRoot(bone);
+            RenderBones();
         }
 
         private void CloneMeshCommand_Executed(object sender, Mesh mesh)
         {
-            loader.CloneMesh(mesh);
+            _loader.CloneMesh(mesh);
             RenderMeshes();
         }
         private void DeleteMeshCommand_Executed(object sender, Mesh mesh)
         {
-            loader.DeleteMesh(mesh);
+            _loader.DeleteMesh(mesh);
             RenderMeshes();
         }
 
@@ -470,9 +460,9 @@ namespace XPSRenominator
 
         private void LoadMeshAsciiFile(string fileName)
         {
-            originalMeshAsciiName ??= string.Join("",fileName.SkipLast(".mesh.ascii".Length));
+            _originalMeshAsciiName ??= string.Join("",fileName.SkipLast(".mesh.ascii".Length));
 
-            loader.LoadAsciiFile(fileName);
+            _loader.LoadAsciiFile(fileName);
 
             RenderBones();
             RenderMeshes();
@@ -503,9 +493,9 @@ namespace XPSRenominator
 
         private void LoadBonesFile(string fileName, bool keepAll = true)
         {
-            originalBonedictName = fileName;
+            _originalBonedictName = fileName;
 
-            loader.LoadBoneFile(fileName, keepAll);
+            _loader.LoadBoneFile(fileName, keepAll);
 
             RenderBones();
         }
@@ -536,14 +526,14 @@ namespace XPSRenominator
                 Title = "Select where to save the bone list names",
                 AddExtension = true,
                 Filter = "BoneDict file|*.txt",
-                FileName = originalBonedictName ?? "Bonedict"
+                FileName = _originalBonedictName ?? "Bonedict"
             };
             if (sfd.ShowDialog() == true)
             {
-                Progress.Maximum = loader.Bones.Where(b => b.OriginalName != b.TranslatedName).Count();
+                Progress.Maximum = _loader.Bones.Count(b => b.OriginalName != b.TranslatedName);
                 Progress.Value = 0;
                 Saving.Visibility = Visibility.Visible;
-                new Thread(() => loader.SaveBones(sfd.FileName, IncreaseProgress)).Start();
+                new Thread(() => _loader.SaveBones(sfd.FileName, IncreaseProgress)).Start();
             }
         }
 
@@ -556,34 +546,30 @@ namespace XPSRenominator
                 Title = "Select where to save the resulting mesh",
                 AddExtension = true,
                 Filter = "XPS .mesh.ascii|*.mesh.ascii",
-                FileName = originalMeshAsciiName != null ? originalMeshAsciiName + "_renamed" : "generic_item"
+                FileName = _originalMeshAsciiName != null ? _originalMeshAsciiName + "_renamed" : "generic_item"
             };
-            if (sfd.ShowDialog() == true)
-            {
-                Progress.Maximum = loader.Bones.Where(b => b.FromMeshAscii).Count() + loader.Meshes.Count;
-                Progress.Value = 0;
-                Saving.Visibility = Visibility.Visible;
+            if (sfd.ShowDialog() != true) return;
+            Progress.Maximum = _loader.Bones.Count(b => b.FromMeshAscii) + _loader.Meshes.Count;
+            Progress.Value = 0;
+            Saving.Visibility = Visibility.Visible;
 
-                new Thread(() =>
-                {
-                    if (!loader.SaveAscii(sfd.FileName, IncreaseProgress))
-                    {
-                        MessageBox.Show("conflicting bone and/or mesh names found, solve them before saving", "Confict found", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
-                        Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
-                    }
-                }).Start();
-            }
+            new Thread(() =>
+            {
+                if (_loader.SaveAscii(sfd.FileName, IncreaseProgress)) return;
+                MessageBox.Show("conflicting bone and/or mesh names found, solve them before saving", "Conflict found", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
+                Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
+            }).Start();
         }
 
         private void UnloadAll(object sender, RoutedEventArgs e)
         {
-            loader.Bones.Clear();
-            loader.Meshes.Clear();
+            _loader.Bones.Clear();
+            _loader.Meshes.Clear();
             MaterialManager.Materials.Clear();
             RenderBones();
             RenderMeshes();
-            originalBonedictName = null;
-            originalMeshAsciiName = null;
+            _originalBonedictName = null;
+            _originalMeshAsciiName = null;
         }
         
         private void IncreaseProgress()
@@ -591,14 +577,14 @@ namespace XPSRenominator
             Progress.Dispatcher.Invoke(() =>
             {
                 Progress.Value++;
-                if (Progress.Value == Progress.Maximum)
+                if (Progress.Value >= Progress.Maximum)
                     Saving.Visibility = Visibility.Hidden;
             });
         }
 
         private void Window_Drop(object sender, DragEventArgs e)
         {
-            string[] fileNames = (string[])e.Data.GetData(DataFormats.FileDrop);
+            var fileNames = e.Data.GetData(DataFormats.FileDrop) as string[];
             fileNames?.ToList().ForEach(fileName =>
             {
                 if (fileName.EndsWith(".mesh.ascii")) LoadMeshAsciiFile(fileName);
@@ -614,15 +600,15 @@ namespace XPSRenominator
 
         private void Regex_TextChanged(object sender, TextChangedEventArgs? e)
         {
-            loader.Bones.ForEach(b => b.ApplyRegex(regexOriginal.Text, regexResult.Text));
-            loader.Meshes.ForEach(m => m.ApplyRegex(regexOriginal.Text, regexResult.Text));
-            loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(t => t.ApplyRegex(regexOriginal.Text, regexResult.Text));
+            _loader.Bones.ForEach(b => b.ApplyRegex(regexOriginal.Text, regexResult.Text));
+            _loader.Meshes.ForEach(m => m.ApplyRegex(regexOriginal.Text, regexResult.Text));
+            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(t => t.ApplyRegex(regexOriginal.Text, regexResult.Text));
             
         }
 
         private void ApplyRename(object sender, RoutedEventArgs e)
         {
-            switch (selectedTab)
+            switch (_selectedTab)
             {
                 case "Bones":
                     FilteredBones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
@@ -631,17 +617,17 @@ namespace XPSRenominator
                     FilteredMeshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
                     break;
                 case "Textures":
-                    loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+                    _loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
                     break;
             }
             Regex_TextChanged(regexResult, null);
         }
 
-        private void BonesorMeshesTab_Selected(object sender, RoutedEventArgs e)
+        private void BonesOrMeshesTab_Selected(object sender, RoutedEventArgs e)
         {
-            if (sender is TabControl tabControl && tabControl.SelectedItem is TabItem tab)
+            if (sender is TabControl { SelectedItem: TabItem tab })
             {
-                selectedTab = tab.Header.ToString()!;
+                _selectedTab = tab.Header.ToString()!;
             }
         }
 
