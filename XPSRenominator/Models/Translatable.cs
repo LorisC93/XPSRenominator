@@ -8,29 +8,29 @@ namespace XPSRenominator.Models
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        private string? translatingName = "";
-        private string translatedName = "";
+        private string? _translatingName = "";
+        private string _translatedName = "";
 
         public string TranslatedName
         {
-            get => translatedName; set
+            get => _translatedName; set
             {
-                translatedName = value;
+                _translatedName = value;
                 OnPropertyChanged();
             }
         }
         public string? TranslatingName
         {
-            get => translatingName; set
+            get => _translatingName; set
             {
-                translatingName = value;
+                _translatingName = value;
                 OnPropertyChanged();
             }
         }
 
         public string OriginalName { get; set; } = "";
 
-        public bool ApplyRegex(string pattern, string replacement)
+        public bool ApplyRegex(string pattern, string replacement, int n)
         {
             TranslatingName = null;
 
@@ -38,11 +38,15 @@ namespace XPSRenominator.Models
             {
                 if (!string.IsNullOrEmpty(pattern) && Regex.IsMatch(TranslatedName, pattern))
                 {
-                    TranslatingName = Regex.Replace(TranslatedName, pattern, replacement);
+                    TranslatingName = Regex.Replace(TranslatedName, pattern, replacement.Replace("\\d", n.ToString().PadLeft(2, '0')));
                     return true;
                 }
             }
-            catch { }
+            catch
+            {
+                // ignored
+            }
+
             return false;
         }
 

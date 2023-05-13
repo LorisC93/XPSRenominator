@@ -4,10 +4,9 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:controls="clr-namespace:XPSRenominator.Controls"
-        xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator 3.0" Height="600" Width="750">
+        Title="XPS Renominator 3.1" Height="600" Width="750">
     <Window.Resources>
         <Style TargetType="Border">
             <Setter Property="BorderBrush" Value="Blue"/>
@@ -69,135 +68,125 @@
                 <Button Click="UnloadAll">Unload all</Button>
             </Border>
         </StackPanel>
+        <Grid Grid.Column="1" Grid.Row="1" Grid.RowSpan="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
 
-        <TabControl Grid.Column="1" Grid.Row="1" Grid.RowSpan="5">
-            <TabItem Header="Rename">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="auto"/>
-                        <RowDefinition/>
-                    </Grid.RowDefinitions>
+                <GroupBox Grid.ColumnSpan="3" Header="Filter">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" TextAlignment="Right" Margin="0,0,5,0">Original name contains</TextBlock>
+                        <TextBlock Grid.Row="1" Grid.Column="0" TextAlignment="Right" Margin="0,0,5,0">Translated name contains</TextBlock>
 
-                    <GroupBox Grid.ColumnSpan="3" Header="Filter">
+                        <TextBox Name="BeforeFilter" Grid.Row="0" Grid.Column="1" TextChanged="Filter_Changed"/>
+                        <TextBox Name="AfterFilter"  Grid.Row="1" Grid.Column="1" TextChanged="Filter_Changed"/>
+                        <CheckBox Name="OnlyUntranslated" Grid.Row="2" Grid.ColumnSpan="2" Grid.Column="0"
+                                  HorizontalAlignment="Center" Checked="Filter_Changed" Unchecked="Filter_Changed" Content="Show only untranslated"/>
+                        <CheckBox Name="OnlyConflicting"  Grid.Row="3" Grid.ColumnSpan="2" Grid.Column="0"
+                                  HorizontalAlignment="Center" Checked="Filter_Changed" Unchecked="Filter_Changed" Content="Show conflicting translations"/>
+                    </Grid>
+                </GroupBox>
+                <GroupBox Grid.Column="3" Grid.Row="0" Grid.ColumnSpan="3" Header="Bulk Rename">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="auto"/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" TextAlignment="Right" Margin="0,0,5,0">Name Matches</TextBlock>
+                        <TextBlock Grid.Row="1" Grid.Column="0" TextAlignment="Right" Margin="0,0,5,0">Result</TextBlock>
+                        <TextBox Name="RegexOriginal" Grid.Row="0" Grid.Column="1" TextChanged="Regex_TextChanged"/>
+                        <TextBox Name="RegexResult"  Grid.Row="1" Grid.Column="1" TextChanged="Regex_TextChanged">
+                            <TextBox.ToolTip>
+                                Use \n to insert an increasing number
+                            </TextBox.ToolTip>
+                        </TextBox>
+
+                        <Border Grid.Row="2" Grid.ColumnSpan="2" Grid.Column="0" Margin="5" BorderBrush="Green">
+                            <Button Click="ApplyRename">Apply</Button>
+                        </Border>
+                    </Grid>
+                </GroupBox>
+
+                <TabControl Grid.ColumnSpan="6" Grid.Column="0" Grid.Row="1" SelectionChanged="BonesOrMeshesTab_Selected">
+                    <TabItem Header="Bones">
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition/>
-                                <ColumnDefinition/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition/>
-                                <RowDefinition/>
-                                <RowDefinition/>
-                                <RowDefinition/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" TextAlignment="Right" Margin="0,0,5,0">Original name contains</TextBlock>
-                            <TextBlock Grid.Row="1" TextAlignment="Right" Margin="0,0,5,0">Translated name contains</TextBlock>
-
-                            <TextBox Name="beforeFilter" Grid.Row="0" Grid.Column="1" TextChanged="Filter_TextChanged"/>
-                            <TextBox Name="afterFilter"  Grid.Row="1" Grid.Column="1" TextChanged="Filter_TextChanged"/>
-                            <CheckBox Name="onlyUntranslated" Grid.Row="2" Grid.ColumnSpan="2" HorizontalAlignment="Center" Checked="Filter_TextChanged" Unchecked="Filter_TextChanged" Content="Show only untranslated"/>
-                            <CheckBox Name="onlyConflicting"  Grid.Row="3" Grid.ColumnSpan="2" HorizontalAlignment="Center" Checked="Filter_TextChanged" Unchecked="Filter_TextChanged" Content="Show conflicting translations"/>
-                        </Grid>
-                    </GroupBox>
-                    <GroupBox Grid.Column="3" Grid.ColumnSpan="3" Header="Bulk Rename">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="auto"/>
-                                <ColumnDefinition/>
-                            </Grid.ColumnDefinitions>
-                            <Grid.RowDefinitions>
-                                <RowDefinition/>
-                                <RowDefinition/>
-                                <RowDefinition/>
-                            </Grid.RowDefinitions>
-                            <TextBlock Grid.Row="0" TextAlignment="Right" Margin="0,0,5,0">Name Matches</TextBlock>
-                            <TextBlock Grid.Row="1" TextAlignment="Right" Margin="0,0,5,0">Result</TextBlock>
-                            <TextBox Name="regexOriginal" Grid.Row="0" Grid.Column="1" TextChanged="Regex_TextChanged"/>
-                            <TextBox Name="regexResult"  Grid.Row="1" Grid.Column="1" TextChanged="Regex_TextChanged"/>
-
-                            <Border Grid.Row="3" Grid.ColumnSpan="2" Margin="5" BorderBrush="Green">
-                                <Button Click="ApplyRename">Apply</Button>
-                            </Border>
-                        </Grid>
-                    </GroupBox>
-
-                    <TabControl Grid.ColumnSpan="6" Grid.Row="1" SelectionChanged="BonesOrMeshesTab_Selected">
-                        <TabItem Header="Bones">
-                            <ScrollViewer>
-                                <Grid x:Name="BonesGrid">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition Width="auto"/>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition/>
-                                    </Grid.ColumnDefinitions>
-                                </Grid>
+                            <ScrollViewer Name="BoneTreeScroll">
+                                <controls:MultiSelectTreeView x:Name="BoneTree" MouseMove="BoneTree_MouseMove" SelectedItemsChanged="BoneTree_SelectedItemsChanged" AllowDrop="True" PreviewMouseWheel="BoneTree_PreviewMouseWheel">
+                                    <controls:MultiSelectTreeView.CommandBindings>
+                                        <CommandBinding Command="Cut" CanExecute="CutBoneCommand_CanExecute" Executed="CutBoneCommand_Executed"></CommandBinding>
+                                        <CommandBinding Command="Paste" CanExecute="PasteBoneCommand_CanExecute" Executed="PasteBoneCommand_Executed"></CommandBinding>
+                                        <CommandBinding Command="New" CanExecute="NewBoneCommand_CanExecute" Executed="NewBoneCommand_Executed"></CommandBinding>
+                                        <CommandBinding Command="Replace" CanExecute="MakeRootBoneCommand_CanExecute" Executed="MakeRootBoneCommand_Executed"></CommandBinding>
+                                    </controls:MultiSelectTreeView.CommandBindings>
+                                    <controls:MultiSelectTreeView.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Cut" Command="Cut"></MenuItem>
+                                            <MenuItem Header="Paste" Command="Paste"></MenuItem>
+                                            <Separator></Separator>
+                                            <MenuItem Header="Make Root" Command="Replace"></MenuItem>
+                                            <MenuItem Header="Add Bone" Command="New"></MenuItem>
+                                        </ContextMenu>
+                                    </controls:MultiSelectTreeView.ContextMenu>
+                                </controls:MultiSelectTreeView>
                             </ScrollViewer>
-                        </TabItem>
-                        <TabItem Header="Meshes">
-                            <ScrollViewer>
-                                <Grid x:Name="MeshesGrid">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition Width="auto"/>
-                                        <ColumnDefinition/>
-                                        <ColumnDefinition/>
-                                    </Grid.ColumnDefinitions>
-                                </Grid>
-                            </ScrollViewer>
-                        </TabItem>
-                        <TabItem Header="Textures">
-                            <ScrollViewer>
-                                <StackPanel Grid.Column="0" x:Name="MaterialsPanel" Orientation="Vertical" AllowDrop="True" MouseMove="MaterialPanel_MouseMove" Background="White" Drop="MaterialPanel_Drop" DragEnter="DragEnterHandler" DragLeave="DragLeaveHandler">
+                            <StackPanel VerticalAlignment="Top" HorizontalAlignment="Right" Margin="25, 5">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Width="50" Margin="2" TextAlignment="Center">X</TextBlock>
+                                    <TextBlock Width="50" Margin="2" TextAlignment="Center">Y</TextBlock>
+                                    <TextBlock Width="50" Margin="2" TextAlignment="Center">Z</TextBlock>
                                 </StackPanel>
-                            </ScrollViewer>
-                        </TabItem>
-                    </TabControl>
-                </Grid>
-            </TabItem>
-            <TabItem Header="Reparent">
-                <Grid VerticalAlignment="Stretch">
-                    <ScrollViewer x:Name="boneTreeScroll">
-                        <controls:MultiSelectTreeView x:Name="boneTree" MouseMove="BoneTree_MouseMove" SelectedItemsChanged="BoneTree_SelectedItemsChanged" AllowDrop="False" PreviewMouseWheel="BoneTree_PreviewMouseWheel">
-                            <controls:MultiSelectTreeView.CommandBindings>
-                                <CommandBinding Command="Cut" CanExecute="CutBoneCommand_CanExecute" Executed="CutBoneCommand_Executed"></CommandBinding>
-                                <CommandBinding Command="Paste" CanExecute="PasteBoneCommand_CanExecute" Executed="PasteBoneCommand_Executed"></CommandBinding>
-                                <CommandBinding Command="New" CanExecute="NewBoneCommand_CanExecute" Executed="NewBoneCommand_Executed"></CommandBinding>
-                                <CommandBinding Command="Replace" CanExecute="MakeRootBoneCommand_CanExecute" Executed="MakeRootBoneCommand_Executed"></CommandBinding>
-                            </controls:MultiSelectTreeView.CommandBindings>
-                            <controls:MultiSelectTreeView.ContextMenu>
-                                <ContextMenu>
-                                    <MenuItem Header="Cut" Command="Cut"></MenuItem>
-                                    <MenuItem Header="Paste" Command="Paste"></MenuItem>
-                                    <Separator></Separator>
-                                    <MenuItem Header="Make Root" Command="Replace"></MenuItem>
-                                    <MenuItem Header="Add Bone" Command="New"></MenuItem>
-                                </ContextMenu>
-                            </controls:MultiSelectTreeView.ContextMenu>
-                        </controls:MultiSelectTreeView>
-                    </ScrollViewer>
-                    <StackPanel VerticalAlignment="Top" HorizontalAlignment="Right" Margin="25, 5">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Width="50" Margin="2" TextAlignment="Center">X</TextBlock>
-                            <TextBlock Width="50" Margin="2" TextAlignment="Center">Y</TextBlock>
-                            <TextBlock Width="50" Margin="2" TextAlignment="Center">Z</TextBlock>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBox x:Name="selectedBoneXPosition" Width="50" Margin="2"></TextBox>
-                            <TextBox x:Name="selectedBoneYPosition" Width="50" Margin="2"></TextBox>
-                            <TextBox x:Name="selectedBoneZPosition" Width="50" Margin="2"></TextBox>
-                        </StackPanel>
-                    </StackPanel>
-                </Grid>
-            </TabItem>
-        </TabControl>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBox x:Name="SelectedBoneXPosition" Width="50" Margin="2"></TextBox>
+                                    <TextBox x:Name="SelectedBoneYPosition" Width="50" Margin="2"></TextBox>
+                                    <TextBox x:Name="SelectedBoneZPosition" Width="50" Margin="2"></TextBox>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </TabItem>
+                    <TabItem Header="Meshes">
+                        <ScrollViewer>
+                            <Grid x:Name="MeshesGrid">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition Width="auto"/>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                            </Grid>
+                        </ScrollViewer>
+                    </TabItem>
+                    <TabItem Header="Textures">
+                        <ScrollViewer>
+                            <StackPanel x:Name="MaterialsPanel" Orientation="Vertical" AllowDrop="True" MouseMove="MaterialPanel_MouseMove" Background="White" Drop="MaterialPanel_Drop" DragEnter="DragEnterHandler" DragLeave="DragLeaveHandler">
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+
     </Grid>
 </Window>

@@ -5,5 +5,7 @@
         public Bone? Parent { get; set; }
         public double[] Position { get; set; } = new double[3];
         public bool FromMeshAscii { get; set; }
+
+        public bool IsRoot => Parent == null;
     }
 }

@@ -5,9 +5,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using XPSRenominator.Controllers;
@@ -37,9 +39,9 @@ namespace XPSRenominator
         {
             get
             {
-                bool ContainsCondition(Translatable bone) => bone.OriginalName.Contains(beforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(afterFilter.Text.ToLower());
-                bool OnlyUntranslatedCondition(Translatable bone) => onlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
-                bool OnlyConflictingCondition(Bone bone) => onlyConflicting.IsChecked == false || (bone.FromMeshAscii && _loader.Bones.Where(b => b.FromMeshAscii && b != bone).Any(b => bone.TranslatedName == b.TranslatedName));
+                bool ContainsCondition(Translatable bone) => bone.OriginalName.Contains(BeforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(AfterFilter.Text.ToLower());
+                bool OnlyUntranslatedCondition(Translatable bone) => OnlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
+                bool OnlyConflictingCondition(Bone bone) => OnlyConflicting.IsChecked == false || (bone.FromMeshAscii && _loader.Bones.Where(b => b.FromMeshAscii && b != bone).Any(b => bone.TranslatedName == b.TranslatedName));
 
                 return _loader.Bones.Where(b => ContainsCondition(b) && OnlyUntranslatedCondition(b) && OnlyConflictingCondition(b));
             }
@@ -48,15 +50,15 @@ namespace XPSRenominator
         {
             get
             {
-                bool ContainsCondition(Translatable mesh) => mesh.OriginalName.Contains(beforeFilter.Text.ToLower()) && mesh.TranslatedName.Contains(afterFilter.Text.ToLower());
-                bool OnlyUntranslatedCondition(Translatable mesh) => onlyUntranslated.IsChecked == false || mesh.OriginalName == mesh.TranslatedName;
-                bool OnlyConflictingCondition(Translatable mesh) => onlyConflicting.IsChecked == false || _loader.Meshes.Where(m => m != mesh).Any(b => mesh.TranslatedName == b.TranslatedName);
+                bool ContainsCondition(Translatable mesh) => mesh.OriginalName.Contains(BeforeFilter.Text.ToLower()) && mesh.TranslatedName.Contains(AfterFilter.Text.ToLower());
+                bool OnlyUntranslatedCondition(Translatable mesh) => OnlyUntranslated.IsChecked == false || mesh.OriginalName == mesh.TranslatedName;
+                bool OnlyConflictingCondition(Translatable mesh) => OnlyConflicting.IsChecked == false || _loader.Meshes.Where(m => m != mesh).Any(b => mesh.TranslatedName == b.TranslatedName);
 
                 return _loader.Meshes.Where(b => ContainsCondition(b) && OnlyUntranslatedCondition(b) && OnlyConflictingCondition(b));
             }
         }
 
-        private void RenderBones()
+        /*private void RenderBones()
         {
             BonesGrid.Dispatcher.Invoke(() =>
             {
@@ -93,25 +95,53 @@ namespace XPSRenominator
                 }
             });
             RenderTree();
-        }
+        }*/
+
+        private bool ShouldRenderBone(Bone bone) => FilteredBones.Contains(bone) || _loader.Bones.Where(b => b.Parent == bone).Any(ShouldRenderBone);
 
         private void RenderTree()
         {
-            void RenderTreeItem(Bone bone, ItemsControl? item = null)
+            void RenderTreeItem(Bone bone, ItemsControl? parentTree = null)
             {
+                if (!ShouldRenderBone(bone)) return;
+
                 StackPanel header = new()
                 {
                     Orientation = Orientation.Horizontal
                 };
-                TextBlock name = new();
-                name.Bind(TextBlock.TextProperty, bone, "TranslatedName");
+
+                if (!bone.FromMeshAscii)
+                {
+                    header.Children.Add(new TextBlock { Text = "[*]", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 5, 0) });
+                }
+                else
+                {
+                    header.Children.Add(new TextBlock { Text = "[ ]", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 5, 0) });
+                }
+
+                TextBox translationTextBox = new() { Text = bone.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
+                translationTextBox.Bind(TextBox.TextProperty, bone, "TranslatedName");
+                header.Children.Add(translationTextBox);
+                
+                TextBlock translatingTextBlock = new()
+                {
+                    Text = bone.TranslatingName,
+                    Foreground = Brushes.Red
+                };
+                translatingTextBlock.Bind(TextBlock.TextProperty, bone, "TranslatingName");
+                header.Children.Add(translatingTextBlock);
+
+                //TextBlock originalName = new();
+                //originalName.Bind(TextBlock.TextProperty, bone, "OriginalName");
+                //header.Children.Add(originalName);
+                
+
                 //TextBox posX = new() { Margin = new(5, 0, 0, 0), Width = 50 };
                 //posX.Bind(TextBox.TextProperty, bone, "Position[0]");
                 //TextBox posY = new() { Margin = new(5, 0, 0, 0), Width = 50 };
                 //posY.Bind(TextBox.TextProperty, bone, "Position[1]");
                 //TextBox posZ = new() { Margin = new(5, 0, 0, 0), Width = 50 };
                 //posZ.Bind(TextBox.TextProperty, bone, "Position[2]");
-                header.Children.Add(name);
                 //header.Children.Add(posX);
                 //header.Children.Add(posY);
                 //header.Children.Add(posZ);
@@ -125,28 +155,20 @@ namespace XPSRenominator
                 };
                 treeItem.DragEnter += DragEnterHandler;
                 treeItem.DragOver += (sender, e) => {
-                    e.Effects = boneTree.SelectedItems.Any(t => CanDrop(t, (TreeViewItem)sender)) ? DragDropEffects.Move : DragDropEffects.None;
+                    e.Effects = BoneTree.SelectedItems.Any(t => CanDrop(t, (TreeViewItem)sender)) ? DragDropEffects.Move : DragDropEffects.None;
                     e.Handled = true;
                 };
                 treeItem.DragLeave += DragLeaveHandler;
                 treeItem.Drop += TreeItem_Drop;
-                foreach (Bone child in _loader.Bones.Where(b => b.Parent == bone && b.FromMeshAscii))
-                {
-                    RenderTreeItem(child, treeItem);
-                }
-                if (item != null)
-                    item.Items.Add(treeItem);
-                else
-                    boneTree.Items.Add(treeItem);
+                var children = _loader.Bones.Where(b => b.Parent == bone && b.FromMeshAscii);
+                foreach (var child in children) RenderTreeItem(child, treeItem);
+                (parentTree ?? BoneTree).Items.Add(treeItem);
             }
 
-            boneTree.Dispatcher.Invoke(() =>
+            BoneTree.Dispatcher.Invoke(() =>
             {
-                boneTree.Items.Clear();
-                foreach (Bone bone in _loader.Bones.Where(b => b.Parent == null && b.FromMeshAscii))
-                {
-                    RenderTreeItem(bone);
-                }
+                BoneTree.Items.Clear();
+                foreach (var bone in _loader.Bones.Where(b => b.IsRoot)) RenderTreeItem(bone);
             });
         }
 
@@ -350,18 +372,18 @@ namespace XPSRenominator
 
         private void BoneTree_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed && boneTree.SelectedItems.Count > 0)
+            if (e.LeftButton == MouseButtonState.Pressed && BoneTree.SelectedItems.Count > 0)
             {
-                DragDrop.DoDragDrop(boneTree, boneTree.SelectedItems, DragDropEffects.All);
+                DragDrop.DoDragDrop(BoneTree, BoneTree.SelectedItems, DragDropEffects.All);
             }
         }
 
         private void BoneTree_SelectedItemsChanged(object sender, List<TreeViewItem> items)
         {
             if (items.Count <= 0 || items[0] is not { Tag: Bone bone }) return;
-            selectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
-            selectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
-            selectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position[2]");
+            SelectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
+            SelectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
+            SelectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position[2]");
         }
 
         private static bool CanDrop(ItemsControl source, TreeViewItem? target) 
@@ -380,7 +402,7 @@ namespace XPSRenominator
 
         private void TreeItem_Drop(object sender, DragEventArgs e)
         {
-            List<TreeViewItem> sources = new(boneTree.SelectedItems); // e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
+            List<TreeViewItem> sources = new(BoneTree.SelectedItems); // e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
 
             var target = (TreeViewItem)sender;
             sources.ForEach(source =>
@@ -396,21 +418,21 @@ namespace XPSRenominator
         }
         private void CutBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            e.CanExecute = boneTree.SelectedItems.Count > 0;
+            e.CanExecute = BoneTree.SelectedItems.Count > 0;
         }
         private void CutBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             _cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; } ) ;
-            _cutBones = new List<TreeViewItem>(boneTree.SelectedItems);
+            _cutBones = new List<TreeViewItem>(BoneTree.SelectedItems);
             _cutBones.ForEach(t => { t.Foreground = Brushes.Gray; t.FontWeight = FontWeights.Bold; });
         }
         private void PasteBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            e.CanExecute = _cutBones.Count > 0 && boneTree.SelectedItems.Count == 1 && _cutBones.Any(t => CanDrop(t, boneTree.SelectedItems.First()));
+            e.CanExecute = _cutBones.Count > 0 && BoneTree.SelectedItems.Count == 1 && _cutBones.Any(t => CanDrop(t, BoneTree.SelectedItems.First()));
         }
         private void PasteBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            var target = boneTree.SelectedItems.First();
+            var target = BoneTree.SelectedItems.First();
             _cutBones.ForEach(source =>
             {
                 if (CanDrop(source, target))
@@ -424,22 +446,22 @@ namespace XPSRenominator
         }
         private void NewBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            e.CanExecute = boneTree.SelectedItems.Count == 1;
+            e.CanExecute = BoneTree.SelectedItems.Count == 1;
         }
         private void NewBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            _loader.AddBone(boneTree.SelectedItems.First().Tag as Bone);
-            RenderBones();
+            _loader.AddBone(BoneTree.SelectedItems.First().Tag as Bone);
+            RenderTree();
         }
         private void MakeRootBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
-            e.CanExecute = boneTree.SelectedItems.Count == 1;
+            e.CanExecute = BoneTree.SelectedItems.Count == 1;
         }
         private void MakeRootBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
-            if (boneTree.SelectedItems.First().Tag is not Bone bone) return;
+            if (BoneTree.SelectedItems.First().Tag is not Bone bone) return;
             _loader.MakeRoot(bone);
-            RenderBones();
+            RenderTree();
         }
 
         private void CloneMeshCommand_Executed(object sender, Mesh mesh)
@@ -455,7 +477,7 @@ namespace XPSRenominator
 
         private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
-            boneTreeScroll.ScrollToVerticalOffset(boneTreeScroll.VerticalOffset - e.Delta / 3);
+            BoneTreeScroll.ScrollToVerticalOffset(BoneTreeScroll.VerticalOffset - e.Delta / 3);
         }
 
         private void LoadMeshAsciiFile(string fileName)
@@ -464,7 +486,7 @@ namespace XPSRenominator
 
             _loader.LoadAsciiFile(fileName);
 
-            RenderBones();
+            RenderTree();
             RenderMeshes();
 
             Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
@@ -497,7 +519,7 @@ namespace XPSRenominator
 
             _loader.LoadBoneFile(fileName, keepAll);
 
-            RenderBones();
+            RenderTree();
         }
 
         private void LoadBonesFileDialog(object sender, RoutedEventArgs e)
@@ -566,7 +588,7 @@ namespace XPSRenominator
             _loader.Bones.Clear();
             _loader.Meshes.Clear();
             MaterialManager.Materials.Clear();
-            RenderBones();
+            RenderTree();
             RenderMeshes();
             _originalBonedictName = null;
             _originalMeshAsciiName = null;
@@ -591,19 +613,43 @@ namespace XPSRenominator
                 if (fileName.EndsWith(".txt")) LoadBonesFile(fileName);
             });
         }
+        
+        private static async Task<bool> UserKeepsTyping(TextBox t, int delay = 500) {
+            var txt = t.Text;
+            await Task.Delay(delay);
+            return txt != t.Text;
+        }
 
-        private void Filter_TextChanged(object sender, EventArgs e)
+        private async void Filter_Changed(object sender, EventArgs e)
         {
-            RenderBones();
+            if(sender is TextBox t && await UserKeepsTyping(t)) return;
+
+            RenderTree();
             RenderMeshes();
         }
 
-        private void Regex_TextChanged(object sender, TextChangedEventArgs? e)
+        private async void Regex_TextChanged(object sender, TextChangedEventArgs? e)
         {
-            _loader.Bones.ForEach(b => b.ApplyRegex(regexOriginal.Text, regexResult.Text));
-            _loader.Meshes.ForEach(m => m.ApplyRegex(regexOriginal.Text, regexResult.Text));
-            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(t => t.ApplyRegex(regexOriginal.Text, regexResult.Text));
-            
+            if (await UserKeepsTyping((sender as TextBox)!)) return;
+
+            var n = 1;
+            _loader.Bones.ForEach(b =>
+            {
+                if (b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, n))
+                    n++;
+            });
+            n = 1;
+            _loader.Meshes.ForEach(m =>
+            {
+                if (m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, n))
+                    n++;
+            });
+            n = 1;
+            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(t =>
+            {
+                if (t.ApplyRegex(RegexOriginal.Text, RegexResult.Text, n))
+                    n++;
+            });
         }
 
         private void ApplyRename(object sender, RoutedEventArgs e)
@@ -620,7 +666,7 @@ namespace XPSRenominator
                     _loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
                     break;
             }
-            Regex_TextChanged(regexResult, null);
+            Regex_TextChanged(RegexResult, null);
         }
 
         private void BonesOrMeshesTab_Selected(object sender, RoutedEventArgs e)
