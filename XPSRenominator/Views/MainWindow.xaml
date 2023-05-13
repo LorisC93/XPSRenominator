@@ -44,8 +44,9 @@
             <ProgressBar x:Name="Progress" Grid.Row="1" MinHeight="20" MinWidth="300" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="10"/>
         </Grid>
 
-        <Image Source="XPSrenominatorCropped.ico" Height="50" Margin="10, 0, 0, 0" Grid.ColumnSpan="2" HorizontalAlignment="Left"></Image>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.ColumnSpan="2">
+        <Image Source="/XPSrenominatorCropped.ico" Height="50" Margin="10, 0, 0, 0" Grid.Row="0" Grid.ColumnSpan="2"
+               Grid.Column="0" HorizontalAlignment="Left"></Image>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="0" Grid.ColumnSpan="2" Grid.Column="0">
             <!--MenuItem Header="Instructions">
                 <MenuItem Header="How to use Renominator?" Click="RenominatorUsage"/>
                 <MenuItem Header="What is BoneDict?" Click="BoneDictExplanation"/>
