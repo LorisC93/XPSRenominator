@@ -98,7 +98,7 @@ namespace XPSRenominator
 
         private bool ShouldRenderBone(Bone bone) => FilteredBones.Contains(bone) || _loader.Bones.Where(b => b.Parent == bone).Any(ShouldRenderBone);
 
-        private void RenderTree()
+        private void RenderBoneTree()
         {
             void RenderTreeItem(Bone bone, ItemsControl? parentTree = null)
             {
@@ -171,54 +171,7 @@ namespace XPSRenominator
             });
         }
 
-        private void RenderMeshes()
-        {
-            MeshesGrid.Dispatcher.Invoke(() =>
-            {
-                MeshesGrid.Children.Clear();
-                MeshesGrid.RowDefinitions.Clear();
-
-                foreach (Mesh mesh in FilteredMeshes)
-                {
-                    ContextMenu contextMenu = new();
-                    MenuItem clone = new() { Header = "Clone" };
-                    MenuItem delete = new() { Header = "Delete" };
-                    clone.Click += (sender, e) => CloneMeshCommand_Executed(sender, mesh);
-                    delete.Click += (sender, e) => DeleteMeshCommand_Executed(sender, mesh);
-                    contextMenu.Items.Add(clone);
-                    contextMenu.Items.Add(delete);
-
-                    MeshesGrid.RowDefinitions.Add(new() { Height = new GridLength(20) });
-
-                    TextBlock originalNameTextBlock = new() { Text = mesh.OriginalName, ContextMenu = contextMenu };
-                    Grid.SetRow(originalNameTextBlock, MeshesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(originalNameTextBlock, 0);
-                    MeshesGrid.Children.Add(originalNameTextBlock);
-
-                    TextBlock arrowTextBlock = new() { Text = "➔" };
-                    Grid.SetRow(arrowTextBlock, MeshesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(arrowTextBlock, 1);
-                    arrowTextBlock.Margin = new Thickness(0, 0, 5, 0);
-                    MeshesGrid.Children.Add(arrowTextBlock);
-
-                    TextBox translationTextBox = new() { Text = mesh.TranslatedName };
-                    Grid.SetRow(translationTextBox, MeshesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(translationTextBox, 2);
-                    translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedName");
-                    MeshesGrid.Children.Add(translationTextBox);
-
-                    TextBlock translatingTextBlock = new() { Text = mesh.TranslatingName };
-                    Grid.SetRow(translatingTextBlock, MeshesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(translatingTextBlock, 3);
-                    translatingTextBlock.Foreground = Brushes.Red;
-                    translatingTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatingName");
-                    MeshesGrid.Children.Add(translatingTextBlock);
-                }
-            });
-            RenderTextures();
-        }
-
-        private void RenderTextures()
+        private void RenderMaterials()
         {
             MaterialsPanel.Dispatcher.Invoke(() =>
             {
@@ -232,7 +185,7 @@ namespace XPSRenominator
                     meshRenderGroupComboBox.Bind(Selector.SelectedItemProperty, material, "RenderGroup");
                     meshRenderGroupComboBox.SelectionChanged += delegate
                     {
-                        RenderTextures();
+                        RenderMaterials();
                     };
                     groupBoxHeader.Children.Add(meshRenderGroupComboBox);
 
@@ -304,10 +257,34 @@ namespace XPSRenominator
                         colorPicker.ColorChanged += (sender, e) => { mesh.Vertices.ForEach(v => v.Color = colorPicker.SelectedColor); };
                         meshLine.Children.Add(colorPicker);
 
-                        TextBlock meshTextBlock = new() { Text = mesh.TranslatedName, Tag = mesh };
+                        /*TextBlock meshTextBlock = new() { Text = mesh.TranslatedName, Tag = mesh };
                         meshTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
-                        meshLine.Children.Add(meshTextBlock);
+                        meshLine.Children.Add(meshTextBlock);*/
 
+                        ContextMenu contextMenu = new();
+                        MenuItem clone = new() { Header = "Clone" };
+                        MenuItem delete = new() { Header = "Delete" };
+                        clone.Click += (sender, e) => CloneMeshCommand_Executed(sender, mesh);
+                        delete.Click += (sender, e) => DeleteMeshCommand_Executed(sender, mesh);
+                        contextMenu.Items.Add(clone);
+                        contextMenu.Items.Add(delete);
+
+                        meshLine.Children.Add(new TextBlock
+                        {
+                            Text = "[ ]", FontWeight = FontWeights.Bold, Margin = new Thickness(2, 0, 2, 0), Tag = mesh, ContextMenu = contextMenu
+                        });
+
+                        TextBox translationTextBox = new() { Text = mesh.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
+                        translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedName");
+                        meshLine.Children.Add(translationTextBox);
+                        
+                        TextBlock translatingTextBlock = new()
+                        {
+                            Text = mesh.TranslatingName,
+                            Foreground = Brushes.Red
+                        };
+                        translatingTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatingName");
+                        meshLine.Children.Add(translatingTextBlock);
 
                         meshesPanel.Children.Add(meshLine);
                     }
@@ -352,7 +329,7 @@ namespace XPSRenominator
             }
             DragLeaveHandler(sender, e);
             e.Handled = true;
-            RenderTextures();
+            RenderMaterials();
         }
         private void MaterialPanel_Drop(object sender, DragEventArgs e)
         {
@@ -366,7 +343,7 @@ namespace XPSRenominator
             }
             DragLeaveHandler(sender, e);
             e.Handled = true;
-            RenderTextures();
+            RenderMaterials();
         }
 
         private void BoneTree_MouseMove(object sender, MouseEventArgs e)
@@ -453,7 +430,7 @@ namespace XPSRenominator
         private void NewBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
         {
             _loader.AddBone(BoneTree.SelectedItems.First().Tag as Bone);
-            RenderTree();
+            RenderBoneTree();
         }
         private void MakeRootBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
         {
@@ -463,18 +440,18 @@ namespace XPSRenominator
         {
             if (BoneTree.SelectedItems.First().Tag is not Bone bone) return;
             _loader.MakeRoot(bone);
-            RenderTree();
+            RenderBoneTree();
         }
 
         private void CloneMeshCommand_Executed(object sender, Mesh mesh)
         {
             _loader.CloneMesh(mesh);
-            RenderMeshes();
+            RenderMaterials();
         }
         private void DeleteMeshCommand_Executed(object sender, Mesh mesh)
         {
             _loader.DeleteMesh(mesh);
-            RenderMeshes();
+            RenderMaterials();
         }
 
         private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -488,8 +465,8 @@ namespace XPSRenominator
 
             _loader.LoadAsciiFile(fileName);
 
-            RenderTree();
-            RenderMeshes();
+            RenderBoneTree();
+            RenderMaterials();
 
             Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
             Progress.Dispatcher.Invoke(() => Progress.Visibility = Visibility.Visible);
@@ -521,7 +498,7 @@ namespace XPSRenominator
 
             _loader.LoadBoneFile(fileName, keepAll);
 
-            RenderTree();
+            RenderBoneTree();
         }
 
         private void LoadBonesFileDialog(object sender, RoutedEventArgs e)
@@ -590,8 +567,8 @@ namespace XPSRenominator
             _loader.Bones.Clear();
             _loader.Meshes.Clear();
             MaterialManager.Materials.Clear();
-            RenderTree();
-            RenderMeshes();
+            RenderBoneTree();
+            RenderMaterials();
             _originalBonedictName = null;
             _originalMeshAsciiName = null;
         }
@@ -626,14 +603,13 @@ namespace XPSRenominator
         {
             if(sender is TextBox t && await UserKeepsTyping(t)) return;
 
-            RenderTree();
-            RenderMeshes();
+            RenderBoneTree();
+            RenderMaterials();
         }
         
         private async void Regex_Changed(object sender, EventArgs? e)
         {
             if(sender is TextBox t && await UserKeepsTyping(t)) return;
-            var renameIndexes = new Dictionary<string, int>();
 
             bool IsIncluded(Bone b)
             {
@@ -642,12 +618,15 @@ namespace XPSRenominator
                     return BoneTree.SelectedItems.Any(item => item.Tag == b) || (b.Parent != null && IsIncluded(b.Parent));
                 return BoneTree.SelectedItems.Any(item => item.Tag == b);
             }
-
+            
+            var renameIndexes = new Dictionary<string, int>();
             _loader.Bones.ForEach(b => b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, !IsIncluded(b)));
-            _loader.Meshes.ForEach(m => m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes));
-            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(tex => tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes));
+            renameIndexes = new Dictionary<string, int>();
+            _loader.Meshes.ForEach(m => m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == false));
+            renameIndexes = new Dictionary<string, int>();
+            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(tex => tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == true));
         }
-        
+
         private void ApplyRename(object sender, RoutedEventArgs e)
         {
             switch (_selectedTab)
@@ -655,22 +634,25 @@ namespace XPSRenominator
                 case "Bones":
                     FilteredBones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
                     break;
-                case "Meshes":
-                    FilteredMeshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
-                    break;
-                case "Textures":
-                    _loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+                default:
+                    if (RenameMeshes.IsChecked == true)
+                        FilteredMeshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+                    else
+                        _loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList()
+                            .ForEach(b => b.TranslatedName = b.TranslatingName!);
                     break;
             }
+
             Regex_Changed(RegexResult, null);
         }
 
-        private void BonesOrMeshesTab_Selected(object sender, RoutedEventArgs e)
+        private void TabSelected(object sender, RoutedEventArgs e)
         {
-            if (sender is TabControl { SelectedItem: TabItem tab })
-            {
-                _selectedTab = tab.Header.ToString()!;
-            }
+            if (sender is not TabControl { SelectedItem: TabItem tab }) return;
+            _selectedTab = tab.Header.ToString()!;
+            OnlySelected.Visibility = _selectedTab == "Bones" ? Visibility.Visible : Visibility.Collapsed;
+            Children.Visibility = _selectedTab == "Bones" ? Visibility.Visible : Visibility.Collapsed;
+            RenameMeshes.Visibility = _selectedTab == "Bones" ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void MenuItem_Click(object sender, RoutedEventArgs e)
