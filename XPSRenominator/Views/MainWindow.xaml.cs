@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using XPSRenominator.Controllers;
@@ -627,31 +626,18 @@ namespace XPSRenominator
             RenderTree();
             RenderMeshes();
         }
-
+        
+        private readonly Dictionary<string, int> _renameIndexes = new();
         private async void Regex_TextChanged(object sender, TextChangedEventArgs? e)
         {
             if (await UserKeepsTyping((sender as TextBox)!)) return;
+            _renameIndexes.Clear();
 
-            var n = 1;
-            _loader.Bones.ForEach(b =>
-            {
-                if (b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, n))
-                    n++;
-            });
-            n = 1;
-            _loader.Meshes.ForEach(m =>
-            {
-                if (m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, n))
-                    n++;
-            });
-            n = 1;
-            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(t =>
-            {
-                if (t.ApplyRegex(RegexOriginal.Text, RegexResult.Text, n))
-                    n++;
-            });
+            _loader.Bones.ForEach(b => b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, _renameIndexes));
+            _loader.Meshes.ForEach(m => m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, _renameIndexes));
+            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(t => t.ApplyRegex(RegexOriginal.Text, RegexResult.Text, _renameIndexes));
         }
-
+        
         private void ApplyRename(object sender, RoutedEventArgs e)
         {
             switch (_selectedTab)

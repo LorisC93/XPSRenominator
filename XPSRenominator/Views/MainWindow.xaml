@@ -6,7 +6,7 @@
         xmlns:controls="clr-namespace:XPSRenominator.Controls"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator 3.1" Height="600" Width="750">
+        Title="XPS Renominator 3.1" Height="900" Width="850">
     <Window.Resources>
         <Style TargetType="Border">
             <Setter Property="BorderBrush" Value="Blue"/>
@@ -121,7 +121,8 @@
                         <TextBox Name="RegexOriginal" Grid.Row="0" Grid.Column="1" TextChanged="Regex_TextChanged"/>
                         <TextBox Name="RegexResult"  Grid.Row="1" Grid.Column="1" TextChanged="Regex_TextChanged">
                             <TextBox.ToolTip>
-                                Use \n to insert an increasing number
+                                Use \n to insert an increasing number.
+                                Use \n\n or \n\n\n to use more padding.
                             </TextBox.ToolTip>
                         </TextBox>
 
