@@ -9,10 +9,10 @@ namespace XPSRenominator.Controllers
 {
     public static class Utils
     {
-        public static string Clean(this string name, bool _allowed = false)
+        public static string Clean(this string name, bool allowed = false)
         {
-            string result = name.ToLower().Replace(':', ' ').Replace('|', ' ').Trim();
-            if (!_allowed) result = result.Replace('_', ' ');
+            var result = name.ToLower().Replace(':', ' ').Replace('|', ' ').Trim();
+            if (!allowed) result = result.Replace('_', ' ');
             return result;
         }
 
@@ -27,32 +27,21 @@ namespace XPSRenominator.Controllers
             BindingOperations.SetBinding(control, property, binding);
         }
 
-        public static Color ToColor(this IEnumerable<byte> RGBA)
+        public static Color ToColor(this IEnumerable<byte> rgba)
         {
-            return Color.FromArgb(RGBA.ElementAt(3), RGBA.ElementAt(0), RGBA.ElementAt(1), RGBA.ElementAt(2));
+            var l = rgba.ToList();
+            return Color.FromArgb(l.ElementAt(3), l.ElementAt(0), l.ElementAt(1), l.ElementAt(2));
         }
 
         public static List<VertexBone> CreateVertexBones(int[] indexes, double[] weights, List<Bone> bones)
         {
-            return indexes.Zip(weights).Select(couple => new VertexBone() { Bone = bones.ElementAt(couple.First), Weight = couple.Second }).ToList();
+            return indexes.Zip(weights).Select(couple => new VertexBone{ Bone = bones.ElementAt(couple.First), Weight = couple.Second }).ToList();
         }
 
-        public static int[] ExtractIntArray(this string s)
-        {
-            return s.Trim().Split(' ').Select(v => int.Parse(v)).ToArray();
-        }
-        public static byte[] ExtractByteArray(this string s)
-        {
-            return s.Trim().Split(' ').Select(v => byte.Parse(v)).ToArray();
-        }
-        public static double[] ExtractDoubleArray(this string s)
-        {
-            return s.Trim().Split(' ').Select(v => double.Parse(v)).ToArray();
-        }
+        public static int[] ExtractIntArray(this string s) => s.Trim().Split(' ').Select(int.Parse).ToArray();
+        public static byte[] ExtractByteArray(this string s) => s.Trim().Split(' ').Select(byte.Parse).ToArray();
+        public static double[] ExtractDoubleArray(this string s) => s.Trim().Split(' ').Select(double.Parse).ToArray();
 
-        public static string RemoveComment(this string line)
-        {
-            return line.Split('#').First().Trim();
-        }
+        public static string RemoveComment(this string line) => line.Split('#').First().Trim();
     }
 }

@@ -14,13 +14,13 @@ namespace XPSRenominator.Controls
         }
 
         public event EventHandler<List<TreeViewItem>>? SelectedItemsChanged;
-        public List<TreeViewItem> SelectedItems { get; private set; } = new List<TreeViewItem>();
+        public List<TreeViewItem> SelectedItems { get; } = new();
 
         private void AllowMultiSelection()
         {
-            PropertyInfo? IsSelectionChangeActiveProperty = GetType().GetProperty("IsSelectionChangeActive", BindingFlags.NonPublic | BindingFlags.Instance);
+            var isSelectionChangeActiveProperty = GetType().GetProperty("IsSelectionChangeActive", BindingFlags.NonPublic | BindingFlags.Instance);
 
-            if (IsSelectionChangeActiveProperty == null) return;
+            if (isSelectionChangeActiveProperty == null) return;
 
             SelectedItemChanged += (sender, e) =>
             {
@@ -29,8 +29,8 @@ namespace XPSRenominator.Controls
                 // suppress selection change notification
                 // select all selected items
                 // then restore selection change notifications
-                var isSelectionChangeActive = IsSelectionChangeActiveProperty.GetValue(this, null);
-                IsSelectionChangeActiveProperty.SetValue(this, true, null);
+                var isSelectionChangeActive = isSelectionChangeActiveProperty.GetValue(this, null);
+                isSelectionChangeActiveProperty.SetValue(this, true, null);
 
                 SelectedItems.ForEach(item => item.IsSelected = false);
 
@@ -38,13 +38,9 @@ namespace XPSRenominator.Controls
                 if (Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl))
                 {
                     if (!SelectedItems.Contains(treeViewItem))
-                    {
                         SelectedItems.Add(treeViewItem);
-                    }
                     else
-                    {
                         SelectedItems.Remove(treeViewItem);
-                    }
                 }
                 else
                 {
@@ -55,11 +51,10 @@ namespace XPSRenominator.Controls
                     }
                 }
                 SelectedItems.ForEach(item => item.IsSelected = true);
-                IsSelectionChangeActiveProperty.SetValue(this, isSelectionChangeActive, null);
+                isSelectionChangeActiveProperty.SetValue(this, isSelectionChangeActive, null);
 
                 SelectedItemsChanged?.Invoke(this, SelectedItems);
             };
-
         }
     }
 }
