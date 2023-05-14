@@ -383,6 +383,9 @@ namespace XPSRenominator
             SelectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
             SelectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
             SelectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position[2]");
+
+            if (OnlySelected.IsChecked == true)
+                Regex_Changed(sender, null);
         }
 
         private static bool CanDrop(ItemsControl source, TreeViewItem? target) 
@@ -627,15 +630,22 @@ namespace XPSRenominator
             RenderMeshes();
         }
         
-        private readonly Dictionary<string, int> _renameIndexes = new();
-        private async void Regex_TextChanged(object sender, TextChangedEventArgs? e)
+        private async void Regex_Changed(object sender, EventArgs? e)
         {
-            if (await UserKeepsTyping((sender as TextBox)!)) return;
-            _renameIndexes.Clear();
+            if(sender is TextBox t && await UserKeepsTyping(t)) return;
+            var renameIndexes = new Dictionary<string, int>();
 
-            _loader.Bones.ForEach(b => b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, _renameIndexes));
-            _loader.Meshes.ForEach(m => m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, _renameIndexes));
-            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(t => t.ApplyRegex(RegexOriginal.Text, RegexResult.Text, _renameIndexes));
+            bool IsIncluded(Bone b)
+            {
+                if (OnlySelected.IsChecked != true) return true;
+                if (Children.IsChecked == true)
+                    return BoneTree.SelectedItems.Any(item => item.Tag == b) || (b.Parent != null && IsIncluded(b.Parent));
+                return BoneTree.SelectedItems.Any(item => item.Tag == b);
+            }
+
+            _loader.Bones.ForEach(b => b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, !IsIncluded(b)));
+            _loader.Meshes.ForEach(m => m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes));
+            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(tex => tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes));
         }
         
         private void ApplyRename(object sender, RoutedEventArgs e)
@@ -652,7 +662,7 @@ namespace XPSRenominator
                     _loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
                     break;
             }
-            Regex_TextChanged(RegexResult, null);
+            Regex_Changed(RegexResult, null);
         }
 
         private void BonesOrMeshesTab_Selected(object sender, RoutedEventArgs e)

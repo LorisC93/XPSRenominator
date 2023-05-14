@@ -115,18 +115,33 @@
                             <RowDefinition/>
                             <RowDefinition/>
                             <RowDefinition/>
+                            <RowDefinition/>
                         </Grid.RowDefinitions>
                         <TextBlock Grid.Row="0" Grid.Column="0" TextAlignment="Right" Margin="0,0,5,0">Name Matches</TextBlock>
                         <TextBlock Grid.Row="1" Grid.Column="0" TextAlignment="Right" Margin="0,0,5,0">Result</TextBlock>
-                        <TextBox Name="RegexOriginal" Grid.Row="0" Grid.Column="1" TextChanged="Regex_TextChanged"/>
-                        <TextBox Name="RegexResult"  Grid.Row="1" Grid.Column="1" TextChanged="Regex_TextChanged">
+                        <TextBox Name="RegexOriginal" Grid.Row="0" Grid.Column="1" TextChanged="Regex_Changed"/>
+                        <TextBox Name="RegexResult"  Grid.Row="1" Grid.Column="1" TextChanged="Regex_Changed">
                             <TextBox.ToolTip>
                                 Use \n to insert an increasing number.
                                 Use \n\n or \n\n\n to use more padding.
                             </TextBox.ToolTip>
                         </TextBox>
+                        
+                        <CheckBox Name="OnlySelected"  Grid.Row="2" Grid.Column="0" VerticalAlignment="Center"
+                                  HorizontalAlignment="Center" Checked="Regex_Changed" Unchecked="Regex_Changed" Content="Selected">
+                            <CheckBox.ToolTip>
+                                Rename only selected bones
+                            </CheckBox.ToolTip>
+                        </CheckBox>
+                        
+                        <CheckBox Name="Children"  Grid.Row="3" Grid.Column="0" VerticalAlignment="Center"
+                                  HorizontalAlignment="Center" Checked="Regex_Changed" Unchecked="Regex_Changed" Content="Children">
+                            <CheckBox.ToolTip>
+                                Rename selected bones' children
+                            </CheckBox.ToolTip>
+                        </CheckBox>
 
-                        <Border Grid.Row="2" Grid.ColumnSpan="2" Grid.Column="0" Margin="5" BorderBrush="Green">
+                        <Border Grid.Row="2" Grid.Column="1" Grid.RowSpan="2" Margin="5" BorderBrush="Green">
                             <Button Click="ApplyRename">Apply</Button>
                         </Border>
                     </Grid>

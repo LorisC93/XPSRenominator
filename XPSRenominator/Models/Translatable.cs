@@ -34,9 +34,11 @@ namespace XPSRenominator.Models
         public string OriginalName { get; set; } = "";
 
 
-        public bool ApplyRegex(string pattern, string replacement, Dictionary<string, int> renameIndexes)
+        public void ApplyRegex(string pattern, string replacement, Dictionary<string, int> renameIndexes, bool exclude = false)
         {
             TranslatingName = null;
+
+            if (exclude) return;
 
             var group = string.Join(',', Regex.Matches(TranslatedName, pattern).SelectMany(m => m.Groups.Values).Select(g => g.Value).Skip(1));
             renameIndexes.TryAdd(group, 1);
@@ -49,15 +51,12 @@ namespace XPSRenominator.Models
                         .Replace("\\d\\d", renameIndexes[group].ToString().PadLeft(2, '0'))
                         .Replace("\\d", renameIndexes[group].ToString().PadLeft(1, '0')));
                     renameIndexes[group]++;
-                    return true;
                 }
             }
             catch
             {
                 // ignored
             }
-
-            return false;
         }
 
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
