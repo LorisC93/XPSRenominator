@@ -6,7 +6,7 @@ using XPSRenominator.Models;
 
 namespace XPSRenominator.Controllers
 {
-    class MeshAsciiLoader
+    internal class MeshAsciiLoader
     {
         //private List<string> originalLines = new();
         public List<Bone> Bones { get; private set; } = new();
@@ -14,14 +14,18 @@ namespace XPSRenominator.Controllers
 
         public void LoadAsciiFile(string fileName)
         {
-            List<string> originalLines = File.ReadLines(fileName).ToList();
-
-            List<Bone> mergingBones = LoadBones(originalLines);
+            var originalLines = File.ReadLines(fileName).ToList();
+            var mergingBones = LoadBones(originalLines);
             MergeBones(mergingBones);
             Meshes.AddRange(LoadMeshes(originalLines, mergingBones));
         }
+        public void LoadPoseFile(string fileName)
+        {
+            Bones = LoadPose(File.ReadLines(fileName).ToList());
+            Meshes.Clear();
+        }
 
-        private static List<Bone> LoadBones(List<string> originalLines)
+        private static List<Bone> LoadBones(IReadOnlyList<string> originalLines)
         {
             // bone number
             /* for each bone */
@@ -65,16 +69,15 @@ namespace XPSRenominator.Controllers
             }
             return mergingBones;
         }
-        private void MergeBones(List<Bone> list2) 
+        private void MergeBones(IList<Bone> list2) 
         {
             for (int i = 0; i < list2.Count; i++)
             {
                 string name = list2.ElementAt(i).TranslatedName;
-                if (Bones.Exists(b => b.TranslatedName == name))
-                {
-                    list2.RemoveAt(i);
-                    list2.Insert(i, Bones.Find(b => b.TranslatedName == name)!);
-                }
+                if (!Bones.Exists(b => b.TranslatedName == name)) continue;
+
+                list2.RemoveAt(i);
+                list2.Insert(i, Bones.Find(b => b.TranslatedName == name)!);
             }
 
             list2.Except(Bones).ToList().ForEach(mergingBone =>
@@ -86,7 +89,29 @@ namespace XPSRenominator.Controllers
             });
         }
 
-        private static List<Mesh> LoadMeshes(List<string> originalLines, List<Bone> bonesToUse)
+        private static List<Bone> LoadPose(IEnumerable<string> originalLines)
+        {
+            /* for each bone */
+            //  bone name: rot_x rot_y rot_z pos_x pos_y pos_z scale_x scale_y scale_z
+
+            return originalLines.Select(line =>
+            {
+                var parts = line.Split(':');
+                var values = parts[1].ExtractDoubleArray();
+                
+                return new Bone
+                {
+                    OriginalName = parts[0].Clean(),
+                    TranslatedName = parts[0].Clean(),
+                    Rotation = values[..3],
+                    Position = values[3..6],
+                    Scale = values[6..9],
+                    FromMeshAscii = true
+                };
+            }).ToList();
+        }
+
+        private static IEnumerable<Mesh> LoadMeshes(IReadOnlyList<string> originalLines, List<Bone> bonesToUse)
         {
             // mesh number
             /* for each mesh */
@@ -112,7 +137,7 @@ namespace XPSRenominator.Controllers
             //Meshes.Clear();
             //MaterialManager.Materials.Clear();
 
-            List<Mesh> mergingMeshes = new ();
+            var mergingMeshes = new List<Mesh>();
 
             int pointer = 1 + bonesToUse.Count * 3;
 
@@ -125,19 +150,19 @@ namespace XPSRenominator.Controllers
                 mesh.OriginalName = name;
                 mesh.TranslatedName = name;
                 mesh.UvLayers = int.Parse(originalLines[pointer++].RemoveComment());
-                int textureCount = int.Parse(originalLines[pointer++].RemoveComment());
-                List<Texture> textures = new();
+                var textureCount = int.Parse(originalLines[pointer++].RemoveComment());
+                var textures = new List<Texture>();
                 for (int j = 0; j < textureCount; j++)
                 {
                     string textureName = originalLines[pointer++].Clean(true);
                     int uvLayer = int.Parse(originalLines[pointer++].RemoveComment());
-                    textures.Add(new() { OriginalName = textureName, TranslatedName = textureName, UvLayer = uvLayer });
+                    textures.Add(new Texture { OriginalName = textureName, TranslatedName = textureName, UvLayer = uvLayer });
                 }
                 mesh.Material = MaterialManager.FindOrCreate(renderGroup, textures, parameters);
                 int verticesCount = int.Parse(originalLines[pointer++].Split('#').First());
                 for (int j = 0; j < verticesCount; j++)
                 {
-                    mesh.Vertices.Add(new()
+                    mesh.Vertices.Add(new Vertex
                     {
                         Position = originalLines[pointer++].ExtractDoubleArray(),
                         Normal = originalLines[pointer++].ExtractDoubleArray(),
@@ -149,7 +174,7 @@ namespace XPSRenominator.Controllers
                 }
                 int faceCount = int.Parse(originalLines[pointer++].RemoveComment());
                 for (int j = 0; j < faceCount; j++)
-                    mesh.Faces.Add(new() { Vertices = originalLines[pointer++].ExtractIntArray() });
+                    mesh.Faces.Add(new Face { Vertices = originalLines[pointer++].ExtractIntArray() });
 
                 mergingMeshes.Add(mesh);
             }
@@ -200,9 +225,10 @@ namespace XPSRenominator.Controllers
 
         public void MakeRoot(Bone bone)
         {
-            bone.Position = new double[3] { 0, 0, 0 };
+            bone.Position = new double[] { 0, 0, 0 };
             bone.TranslatedName = "root ground";
             bone.Parent = null;
+            bone.FromMeshAscii = true;
 
             Bones.Remove(bone);
 
@@ -211,15 +237,8 @@ namespace XPSRenominator.Controllers
             Bones.Insert(0, bone);
         }
 
-
-        public void CloneMesh(Mesh mesh)
-        {
-            Meshes.Add((Mesh)mesh.Clone());
-        }
-        public void DeleteMesh(Mesh mesh)
-        {
-            Meshes.Remove(mesh);
-        }
+        public void CloneMesh(Mesh mesh) => Meshes.Add((Mesh)mesh.Clone());
+        public void DeleteMesh(Mesh mesh) => Meshes.Remove(mesh);
 
         public void LoadBoneFile(string fileName, bool keepAll = true)
         {
@@ -251,26 +270,30 @@ namespace XPSRenominator.Controllers
             });
         }
 
-        private List<Bone> GetBoneConficts(bool onlyFromMesh = true)
-        {
-            IEnumerable<IGrouping<string, Bone>> groups = Bones.Where(b => !onlyFromMesh || b.FromMeshAscii).GroupBy(b => b.TranslatedName);
-            return groups.Where(g => g.Count() > 1).SelectMany(g => g).Distinct().ToList();
-        }
-        private List<Mesh> GetMeshConficts()
-        {
-            IEnumerable<IGrouping<string, Mesh>> groups = Meshes.GroupBy(b => b.TranslatedName);
-            return groups.Where(g => g.Count() > 1).SelectMany(g => g).Distinct().ToList();
-        }
+        private List<Bone> GetBoneConflicts(bool onlyFromMesh = true) => Bones
+            .Where(b => !onlyFromMesh || b.FromMeshAscii)
+            .GroupBy(b => b.TranslatedName)
+            .Where(g => g.Count() > 1)
+            .SelectMany(g => g)
+            .Distinct()
+            .ToList();
+
+        private List<Mesh> GetMeshConflicts() => Meshes
+            .GroupBy(b => b.TranslatedName)
+            .Where(g => g.Count() > 1)
+            .SelectMany(g => g)
+            .Distinct()
+            .ToList();
 
         public bool SaveAscii(string fileName, Action increaseProgress)
         {
-            if (GetBoneConficts().Count > 0 || GetMeshConficts().Count > 0)
+            if (GetBoneConflicts().Count > 0 || GetMeshConflicts().Count > 0)
             {
                 return false;
             }
 
             using StreamWriter file = new(fileName, false);
-            file.WriteLine(Bones.Where(b => b.FromMeshAscii).Count() + " # bones");
+            file.WriteLine(Bones.Count(b => b.FromMeshAscii) + " # bones");
             Bones.Where(b => b.FromMeshAscii).ToList().ForEach(b =>
             {
                 file.WriteLine(b.TranslatedName);
@@ -316,6 +339,20 @@ namespace XPSRenominator.Controllers
                 increaseProgress();
             });
             return true;
+        }
+
+        public void SavePose(string fileName, Action increaseProgress)
+        {
+            using StreamWriter file = new(fileName, false);
+            Bones.Where(b => b.FromMeshAscii).Select(b => b.TranslatedName + ": " +
+                             string.Join(' ', b.Rotation) + " " +
+                             string.Join(' ', b.Position) + " " +
+                             string.Join(' ', b.Scale))
+                .ToList().ForEach(line =>
+                {
+                    file.WriteLine(line);
+                    increaseProgress();
+                });
         }
 
         public void SaveBones(string fileName, Action increaseProgress)

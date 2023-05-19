@@ -40,18 +40,17 @@ namespace XPSRenominator.Models
 
             if (exclude) return;
 
-            var group = string.Join(',', Regex.Matches(TranslatedName, pattern).SelectMany(m => m.Groups.Values).Select(g => g.Value).Skip(1));
-            renameIndexes.TryAdd(group, 1);
             try
             {
-                if (!string.IsNullOrEmpty(pattern) && Regex.IsMatch(TranslatedName, pattern))
-                {
-                    TranslatingName = Regex.Replace(TranslatedName, pattern, replacement
-                        .Replace("\\d\\d\\d", renameIndexes[group].ToString().PadLeft(3, '0'))
-                        .Replace("\\d\\d", renameIndexes[group].ToString().PadLeft(2, '0'))
-                        .Replace("\\d", renameIndexes[group].ToString().PadLeft(1, '0')));
-                    renameIndexes[group]++;
-                }
+                var group = string.Join(',', Regex.Matches(TranslatedName, pattern).SelectMany(m => m.Groups.Values).Select(g => g.Value).Skip(1));
+                renameIndexes.TryAdd(group, 1);
+
+                if (string.IsNullOrEmpty(pattern) || !Regex.IsMatch(TranslatedName, pattern)) return;
+                TranslatingName = Regex.Replace(TranslatedName, pattern, replacement
+                    .Replace("\\d\\d\\d", renameIndexes[group].ToString().PadLeft(3, '0'))
+                    .Replace("\\d\\d", renameIndexes[group].ToString().PadLeft(2, '0'))
+                    .Replace("\\d", renameIndexes[group].ToString().PadLeft(1, '0')));
+                renameIndexes[group]++;
             }
             catch
             {

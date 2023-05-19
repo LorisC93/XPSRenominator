@@ -6,17 +6,27 @@
         xmlns:controls="clr-namespace:XPSRenominator.Controls"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator 3.2" Height="900" Width="850">
+        Title="XPS Renominator 3.3" Height="900" Width="850">
     <Window.Resources>
-        <Style TargetType="Border">
-            <Setter Property="BorderBrush" Value="Blue"/>
-            <Setter Property="BorderThickness" Value="2"/>
-            <Setter Property="CornerRadius" Value="10"/>
-        </Style>
         <Style TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Padding" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Margin="5" BorderThickness="2" BorderBrush="{TemplateBinding BorderBrush}" CornerRadius="10" VerticalAlignment="Center" Padding="5" Cursor="Hand">
+                            <Label HorizontalAlignment="Center"><ContentPresenter /></Label>
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Style.Triggers>
+                                        <Trigger Property="Border.IsMouseOver" Value="True">
+                                            <Setter Property="Border.Background" Value="Aqua" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
@@ -46,27 +56,15 @@
         <Image Source="/XPSrenominatorCropped.ico" Height="50" Margin="10, 0, 0, 0" Grid.Row="0" Grid.ColumnSpan="2"
                Grid.Column="0" HorizontalAlignment="Left"></Image>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="0" Grid.ColumnSpan="2" Grid.Column="0">
-            <!--MenuItem Header="Instructions">
-                <MenuItem Header="How to use Renominator?" Click="RenominatorUsage"/>
-                <MenuItem Header="What is BoneDict?" Click="BoneDictExplanation"/>
-            </MenuItem-->
-            <Border Margin="5">
-                <Button Click="LoadMeshFileDialog">Load .mesh.ascii</Button>
-            </Border>
-            <Border Margin="5" BorderBrush="Green">
-                <Button Click="SaveMeshFileDialog">Save .mesh.ascii</Button>
-            </Border>
+            <Button Click="LoadMeshFileDialog" BorderBrush="Cyan">Load .mesh.ascii/.pose</Button>
+            <Button Name="SaveMeshButton" Click="SaveMeshFileDialog" BorderBrush="Green" Visibility="Collapsed">Save .mesh.ascii/.pose</Button>
             <Rectangle Fill="LightGray" Width="1" ></Rectangle>
-            <Border Margin="5">
-                <Button Click="LoadBonesFileDialog">Load BoneDict</Button>
-            </Border>
-            <Border Margin="5" BorderBrush="Green">
-                <Button Click="SaveBonesFileDialog">Save BoneDict</Button>
-            </Border>
-            <Rectangle Fill="LightGray" Width="1" ></Rectangle>
-            <Border Margin="5" BorderBrush="Red">
-                <Button Click="UnloadAll">Unload all</Button>
-            </Border>
+            <Button Click="LoadBonesFileDialog" BorderBrush="Cyan">Load BoneDict</Button>
+            <Button Name="SaveBoneDictButton" Click="SaveBonesFileDialog" BorderBrush="Green" Visibility="Collapsed">Save BoneDict</Button>
+            <StackPanel Name="UnloadAllButton" Visibility="Collapsed">
+                <Rectangle Fill="LightGray" Width="1" ></Rectangle>
+                <Button BorderBrush="Red" Click="UnloadAll">Unload all</Button>
+            </StackPanel>
         </StackPanel>
         <Grid Grid.Column="1" Grid.Row="1" Grid.RowSpan="5">
                 <Grid.ColumnDefinitions>
@@ -153,7 +151,7 @@
                 </GroupBox>
 
                 <TabControl Grid.ColumnSpan="6" Grid.Column="0" Grid.Row="1" SelectionChanged="TabSelected">
-                    <TabItem Header="Bones">
+                    <TabItem Name="TabBones" Header="Bones">
                         <Grid>
                             <ScrollViewer Name="BoneTreeScroll">
                                 <controls:MultiSelectTreeView x:Name="BoneTree" MouseMove="BoneTree_MouseMove" SelectedItemsChanged="BoneTree_SelectedItemsChanged" AllowDrop="True" PreviewMouseWheel="BoneTree_PreviewMouseWheel">
@@ -188,7 +186,7 @@
                             </StackPanel>
                         </Grid>
                     </TabItem>
-                    <TabItem Header="Meshes / Materials">
+                    <TabItem Name="TabMaterials" Header="Meshes / Materials">
                         <ScrollViewer>
                             <StackPanel x:Name="MaterialsPanel" Orientation="Vertical" AllowDrop="True" MouseMove="MaterialPanel_MouseMove" Background="White" Drop="MaterialPanel_Drop" DragEnter="DragEnterHandler" DragLeave="DragLeaveHandler">
                             </StackPanel>

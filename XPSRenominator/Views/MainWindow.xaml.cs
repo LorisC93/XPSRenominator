@@ -14,651 +14,647 @@ using System.Windows.Media;
 using XPSRenominator.Controllers;
 using XPSRenominator.Models;
 
-namespace XPSRenominator
+namespace XPSRenominator;
+
+/// <summary>
+/// Logica di interazione per MainWindow.xaml
+/// </summary>
+public partial class MainWindow : Window
 {
+    private readonly MeshAsciiLoader _loader = new();
+    private string? _originalMeshAsciiName;
+    private string? _originalPoseName;
+    private string? _originalBonedictName;
+    private TabItem _selectedTab;
 
-    /// <summary>
-    /// Logica di interazione per MainWindow.xaml
-    /// </summary>
-    public partial class MainWindow : Window
+    public MainWindow()
     {
-        private readonly MeshAsciiLoader _loader = new();
-        private string? _originalMeshAsciiName;
-        private string? _originalBonedictName;
-        private string _selectedTab = "Bones";
+        InitializeComponent();
+        _selectedTab = TabBones;
+    }
 
-        public MainWindow()
+    private List<TreeViewItem> _cutBones = new();
+
+    private IEnumerable<Bone> FilteredBones
+    {
+        get
         {
-            InitializeComponent();
+            bool ContainsCondition(Translatable bone) => bone.OriginalName.Contains(BeforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(AfterFilter.Text.ToLower());
+            bool OnlyUntranslatedCondition(Translatable bone) => OnlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
+            bool OnlyConflictingCondition(Bone bone) => OnlyConflicting.IsChecked == false || (bone.FromMeshAscii && _loader.Bones.Where(b => b.FromMeshAscii && b != bone).Any(b => bone.TranslatedName == b.TranslatedName));
+
+            return _loader.Bones.Where(b => ContainsCondition(b) && OnlyUntranslatedCondition(b) && OnlyConflictingCondition(b));
+        }
+    }
+    private IEnumerable<Mesh> FilteredMeshes
+    {
+        get
+        {
+            bool ContainsCondition(Translatable mesh) => mesh.OriginalName.Contains(BeforeFilter.Text.ToLower()) && mesh.TranslatedName.Contains(AfterFilter.Text.ToLower());
+            bool OnlyUntranslatedCondition(Translatable mesh) => OnlyUntranslated.IsChecked == false || mesh.OriginalName == mesh.TranslatedName;
+            bool OnlyConflictingCondition(Translatable mesh) => OnlyConflicting.IsChecked == false || _loader.Meshes.Where(m => m != mesh).Any(b => mesh.TranslatedName == b.TranslatedName);
+
+            return _loader.Meshes.Where(b => ContainsCondition(b) && OnlyUntranslatedCondition(b) && OnlyConflictingCondition(b));
+        }
+    }
+
+    private bool ShouldRenderBone(Bone bone) => FilteredBones.Contains(bone) || _loader.Bones.Where(b => b.Parent == bone).Any(ShouldRenderBone);
+
+    private void Refresh()
+    {
+        if(_selectedTab == TabBones)
+            RenderBoneTree();
+        if(_selectedTab == TabMaterials)
+            RenderMaterials();
+    }
+
+    private void RenderBoneTree()
+    {
+        void RenderTreeItem(Bone bone, ItemsControl? parentTree = null)
+        {
+            if (!ShouldRenderBone(bone)) return;
+
+            StackPanel header = new()
+            {
+                Orientation = Orientation.Horizontal
+            };
+
+            header.Children.Add(new TextBlock
+            {
+                Text = $"[{(bone.FromMeshAscii ? " " : "*")}{bone.OriginalName}]", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 5, 0)
+            });
+
+            TextBox translationTextBox = new() { Text = bone.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
+            translationTextBox.Bind(TextBox.TextProperty, bone, "TranslatedName");
+            header.Children.Add(translationTextBox);
+                
+            TextBlock translatingTextBlock = new()
+            {
+                Text = bone.TranslatingName,
+                Foreground = Brushes.Red
+            };
+            translatingTextBlock.Bind(TextBlock.TextProperty, bone, "TranslatingName");
+            header.Children.Add(translatingTextBlock);
+
+            //TextBlock originalName = new();
+            //originalName.Bind(TextBlock.TextProperty, bone, "OriginalName");
+            //header.Children.Add(originalName);
+                
+
+            //TextBox posX = new() { Margin = new(5, 0, 0, 0), Width = 50 };
+            //posX.Bind(TextBox.TextProperty, bone, "Position[0]");
+            //TextBox posY = new() { Margin = new(5, 0, 0, 0), Width = 50 };
+            //posY.Bind(TextBox.TextProperty, bone, "Position[1]");
+            //TextBox posZ = new() { Margin = new(5, 0, 0, 0), Width = 50 };
+            //posZ.Bind(TextBox.TextProperty, bone, "Position[2]");
+            //header.Children.Add(posX);
+            //header.Children.Add(posY);
+            //header.Children.Add(posZ);
+
+            TreeViewItem treeItem = new()
+            {
+                Header = header,
+                Tag = bone,
+                IsExpanded = true,
+                AllowDrop = true
+            };
+            treeItem.DragEnter += DragEnterHandler;
+            treeItem.DragOver += (sender, e) => {
+                e.Effects = BoneTree.SelectedItems.Any(t => CanDrop(t, (TreeViewItem)sender)) ? DragDropEffects.Move : DragDropEffects.None;
+                e.Handled = true;
+            };
+            treeItem.DragLeave += DragLeaveHandler;
+            treeItem.Drop += TreeItem_Drop;
+            var children = _loader.Bones.Where(b => b.Parent == bone && b.FromMeshAscii);
+            foreach (var child in children) RenderTreeItem(child, treeItem);
+            (parentTree ?? BoneTree).Items.Add(treeItem);
         }
 
-        private List<TreeViewItem> _cutBones = new();
-
-        private IEnumerable<Bone> FilteredBones
+        BoneTree.Dispatcher.Invoke(() =>
         {
-            get
-            {
-                bool ContainsCondition(Translatable bone) => bone.OriginalName.Contains(BeforeFilter.Text.ToLower()) && bone.TranslatedName.Contains(AfterFilter.Text.ToLower());
-                bool OnlyUntranslatedCondition(Translatable bone) => OnlyUntranslated.IsChecked == false || bone.OriginalName == bone.TranslatedName;
-                bool OnlyConflictingCondition(Bone bone) => OnlyConflicting.IsChecked == false || (bone.FromMeshAscii && _loader.Bones.Where(b => b.FromMeshAscii && b != bone).Any(b => bone.TranslatedName == b.TranslatedName));
+            BoneTree.Items.Clear();
+            foreach (var bone in _loader.Bones.Where(b => b.IsRoot)) RenderTreeItem(bone);
+        });
+    }
 
-                return _loader.Bones.Where(b => ContainsCondition(b) && OnlyUntranslatedCondition(b) && OnlyConflictingCondition(b));
-            }
-        }
-        private IEnumerable<Mesh> FilteredMeshes
+    private void RenderMaterials()
+    {
+        MaterialsPanel.Dispatcher.Invoke(() =>
         {
-            get
+            MaterialsPanel.Children.Clear();
+
+            foreach (Material material in MaterialManager.Materials)
             {
-                bool ContainsCondition(Translatable mesh) => mesh.OriginalName.Contains(BeforeFilter.Text.ToLower()) && mesh.TranslatedName.Contains(AfterFilter.Text.ToLower());
-                bool OnlyUntranslatedCondition(Translatable mesh) => OnlyUntranslated.IsChecked == false || mesh.OriginalName == mesh.TranslatedName;
-                bool OnlyConflictingCondition(Translatable mesh) => OnlyConflicting.IsChecked == false || _loader.Meshes.Where(m => m != mesh).Any(b => mesh.TranslatedName == b.TranslatedName);
+                StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal, AllowDrop = true };
 
-                return _loader.Meshes.Where(b => ContainsCondition(b) && OnlyUntranslatedCondition(b) && OnlyConflictingCondition(b));
-            }
-        }
-
-        /*private void RenderBones()
-        {
-            BonesGrid.Dispatcher.Invoke(() =>
-            {
-                BonesGrid.Children.Clear();
-                BonesGrid.RowDefinitions.Clear();
-
-                foreach (var bone in FilteredBones)
+                ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = material.RenderGroup, Margin = new Thickness(0, 0, 5, 0) };
+                meshRenderGroupComboBox.Bind(Selector.SelectedItemProperty, material, "RenderGroup");
+                meshRenderGroupComboBox.SelectionChanged += delegate
                 {
-                    BonesGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(20) });
+                    RenderMaterials();
+                };
+                groupBoxHeader.Children.Add(meshRenderGroupComboBox);
 
-                    TextBlock originalNameTextBlock = new() { Text = bone.OriginalName };
-                    Grid.SetRow(originalNameTextBlock, BonesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(originalNameTextBlock, 0);
-                    BonesGrid.Children.Add(originalNameTextBlock);
+                TextBox meshRenderParameter1 = new() { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25 };
+                TextBox meshRenderParameter2 = new() { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25 };
+                TextBox meshRenderParameter3 = new() { Text = material.RenderParameters[2].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 0, 0), MinWidth = 25 };
+                meshRenderParameter1.Bind(TextBox.TextProperty, material, "RenderParameters[0]");
+                meshRenderParameter2.Bind(TextBox.TextProperty, material, "RenderParameters[1]");
+                meshRenderParameter3.Bind(TextBox.TextProperty, material, "RenderParameters[2]");
+                groupBoxHeader.Children.Add(meshRenderParameter1);
+                groupBoxHeader.Children.Add(meshRenderParameter2);
+                groupBoxHeader.Children.Add(meshRenderParameter3);
 
-                    TextBlock arrowTextBlock = new() { Text = "➔" };
-                    Grid.SetRow(arrowTextBlock, BonesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(arrowTextBlock, 1);
-                    arrowTextBlock.Margin = new Thickness(0, 0, 5, 0);
-                    BonesGrid.Children.Add(arrowTextBlock);
+                GroupBox meshNameGroupBox = new() { Header = groupBoxHeader, Tag = material, Padding = new Thickness(0, 2, 0, 2) };
+                meshNameGroupBox.DragEnter += DragEnterHandler;
+                meshNameGroupBox.DragLeave += DragLeaveHandler;
+                meshNameGroupBox.Drop += MaterialGroup_Drop;
+                MaterialsPanel.Children.Add(meshNameGroupBox);
 
-                    TextBox translationTextBox = new() { Text = bone.TranslatedName };
-                    Grid.SetRow(translationTextBox, BonesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(translationTextBox, 2);
-                    translationTextBox.Bind(TextBox.TextProperty, bone, "TranslatedName");
-                    BonesGrid.Children.Add(translationTextBox);
+                Grid texturesGrid = new();
+                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Auto) });
+                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
+                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
+                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
+                meshNameGroupBox.Content = texturesGrid;
 
-                    TextBlock translatingTextBlock = new() { Text = bone.TranslatingName };
-                    Grid.SetRow(translatingTextBlock, BonesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(translatingTextBlock, 3);
+                for (int i = 0; i < material.RenderGroup.SupportedTextureTypes.Count; i++)
+                {
+                    if (material.Textures.Count <= i)
+                    {
+                        material.Textures.Add(new Texture());
+                    }
+                    Texture texture = material.Textures.ElementAt(i);
+
+                    texturesGrid.RowDefinitions.Add(new RowDefinition() );
+
+                    TextBlock textureTypeTextBlock = new() { Text = material.RenderGroup.SupportedTextureTypes[i].Code(), Margin = new(0, 0, 5, 0) };
+                    Grid.SetRow(textureTypeTextBlock, texturesGrid.RowDefinitions.Count - 1);
+                    Grid.SetColumn(textureTypeTextBlock, 0);
+                    textureTypeTextBlock.Foreground = Brushes.Gray;
+                    textureTypeTextBlock.VerticalAlignment = VerticalAlignment.Center;
+                    texturesGrid.Children.Add(textureTypeTextBlock);
+
+                    TextBox translationTextBox = new() { Text = texture.TranslatedName };
+                    Grid.SetRow(translationTextBox, texturesGrid.RowDefinitions.Count - 1);
+                    Grid.SetColumn(translationTextBox, 1);
+                    translationTextBox.Bind(TextBox.TextProperty, texture, "TranslatedName");
+                    translationTextBox.VerticalAlignment = VerticalAlignment.Center;
+                    texturesGrid.Children.Add(translationTextBox);
+
+                    TextBlock translatingTextBlock = new() { Text = texture.TranslatingName };
+                    Grid.SetRow(translatingTextBlock, texturesGrid.RowDefinitions.Count - 1);
+                    Grid.SetColumn(translatingTextBlock, 2);
                     translatingTextBlock.Foreground = Brushes.Red;
-                    translatingTextBlock.Bind(TextBlock.TextProperty, bone, "TranslatingName");
-                    BonesGrid.Children.Add(translatingTextBlock);
-                }
-            });
-            RenderTree();
-        }*/
-
-        private bool ShouldRenderBone(Bone bone) => FilteredBones.Contains(bone) || _loader.Bones.Where(b => b.Parent == bone).Any(ShouldRenderBone);
-
-        private void RenderBoneTree()
-        {
-            void RenderTreeItem(Bone bone, ItemsControl? parentTree = null)
-            {
-                if (!ShouldRenderBone(bone)) return;
-
-                StackPanel header = new()
-                {
-                    Orientation = Orientation.Horizontal
-                };
-
-                if (!bone.FromMeshAscii)
-                {
-                    header.Children.Add(new TextBlock { Text = "[*]", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 5, 0) });
-                }
-                else
-                {
-                    header.Children.Add(new TextBlock { Text = "[ ]", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 5, 0) });
+                    translatingTextBlock.VerticalAlignment = VerticalAlignment.Center;
+                    translatingTextBlock.Bind(TextBlock.TextProperty, texture, "TranslatingName");
+                    texturesGrid.Children.Add(translatingTextBlock);
                 }
 
-                TextBox translationTextBox = new() { Text = bone.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
-                translationTextBox.Bind(TextBox.TextProperty, bone, "TranslatedName");
-                header.Children.Add(translationTextBox);
-                
-                TextBlock translatingTextBlock = new()
+                StackPanel meshesPanel = new() { Orientation = Orientation.Vertical };
+                Grid.SetRowSpan(meshesPanel, texturesGrid.RowDefinitions.Count);
+                Grid.SetColumn(meshesPanel, 3);
+
+                foreach (Mesh mesh in _loader.Meshes.Where(m => m.Material == material))
                 {
-                    Text = bone.TranslatingName,
-                    Foreground = Brushes.Red
-                };
-                translatingTextBlock.Bind(TextBlock.TextProperty, bone, "TranslatingName");
-                header.Children.Add(translatingTextBlock);
+                    StackPanel meshLine = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
-                //TextBlock originalName = new();
-                //originalName.Bind(TextBlock.TextProperty, bone, "OriginalName");
-                //header.Children.Add(originalName);
-                
+                    PortableColorPicker colorPicker = new() { Width = 15, Height = 15, Margin = new Thickness(0, 0, 2, 0), ShowAlpha = false, SelectedColor = mesh.Vertices.First().Color };
+                    colorPicker.ColorChanged += (sender, e) => { mesh.Vertices.ForEach(v => v.Color = colorPicker.SelectedColor); };
+                    meshLine.Children.Add(colorPicker);
 
-                //TextBox posX = new() { Margin = new(5, 0, 0, 0), Width = 50 };
-                //posX.Bind(TextBox.TextProperty, bone, "Position[0]");
-                //TextBox posY = new() { Margin = new(5, 0, 0, 0), Width = 50 };
-                //posY.Bind(TextBox.TextProperty, bone, "Position[1]");
-                //TextBox posZ = new() { Margin = new(5, 0, 0, 0), Width = 50 };
-                //posZ.Bind(TextBox.TextProperty, bone, "Position[2]");
-                //header.Children.Add(posX);
-                //header.Children.Add(posY);
-                //header.Children.Add(posZ);
+                    /*TextBlock meshTextBlock = new() { Text = mesh.TranslatedName, Tag = mesh };
+                    meshTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
+                    meshLine.Children.Add(meshTextBlock);*/
 
-                TreeViewItem treeItem = new()
-                {
-                    Header = header,
-                    Tag = bone,
-                    IsExpanded = true,
-                    AllowDrop = true
-                };
-                treeItem.DragEnter += DragEnterHandler;
-                treeItem.DragOver += (sender, e) => {
-                    e.Effects = BoneTree.SelectedItems.Any(t => CanDrop(t, (TreeViewItem)sender)) ? DragDropEffects.Move : DragDropEffects.None;
-                    e.Handled = true;
-                };
-                treeItem.DragLeave += DragLeaveHandler;
-                treeItem.Drop += TreeItem_Drop;
-                var children = _loader.Bones.Where(b => b.Parent == bone && b.FromMeshAscii);
-                foreach (var child in children) RenderTreeItem(child, treeItem);
-                (parentTree ?? BoneTree).Items.Add(treeItem);
-            }
+                    ContextMenu contextMenu = new();
+                    MenuItem clone = new() { Header = "Clone" };
+                    MenuItem delete = new() { Header = "Delete" };
+                    clone.Click += (sender, e) => CloneMeshCommand_Executed(sender, mesh);
+                    delete.Click += (sender, e) => DeleteMeshCommand_Executed(sender, mesh);
+                    contextMenu.Items.Add(clone);
+                    contextMenu.Items.Add(delete);
 
-            BoneTree.Dispatcher.Invoke(() =>
-            {
-                BoneTree.Items.Clear();
-                foreach (var bone in _loader.Bones.Where(b => b.IsRoot)) RenderTreeItem(bone);
-            });
-        }
-
-        private void RenderMaterials()
-        {
-            MaterialsPanel.Dispatcher.Invoke(() =>
-            {
-                MaterialsPanel.Children.Clear();
-
-                foreach (Material material in MaterialManager.Materials)
-                {
-                    StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal, AllowDrop = true };
-
-                    ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = material.RenderGroup, Margin = new Thickness(0, 0, 5, 0) };
-                    meshRenderGroupComboBox.Bind(Selector.SelectedItemProperty, material, "RenderGroup");
-                    meshRenderGroupComboBox.SelectionChanged += delegate
+                    meshLine.Children.Add(new TextBlock
                     {
-                        RenderMaterials();
-                    };
-                    groupBoxHeader.Children.Add(meshRenderGroupComboBox);
+                        Text = $"[{mesh.OriginalName}]", FontWeight = FontWeights.Bold, Margin = new Thickness(2, 0, 2, 0), Tag = mesh, ContextMenu = contextMenu
+                    });
 
-                    TextBox meshRenderParameter1 = new() { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25 };
-                    TextBox meshRenderParameter2 = new() { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25 };
-                    TextBox meshRenderParameter3 = new() { Text = material.RenderParameters[2].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 0, 0), MinWidth = 25 };
-                    meshRenderParameter1.Bind(TextBox.TextProperty, material, "RenderParameters[0]");
-                    meshRenderParameter2.Bind(TextBox.TextProperty, material, "RenderParameters[1]");
-                    meshRenderParameter3.Bind(TextBox.TextProperty, material, "RenderParameters[2]");
-                    groupBoxHeader.Children.Add(meshRenderParameter1);
-                    groupBoxHeader.Children.Add(meshRenderParameter2);
-                    groupBoxHeader.Children.Add(meshRenderParameter3);
-
-                    GroupBox meshNameGroupBox = new() { Header = groupBoxHeader, Tag = material, Padding = new Thickness(0, 2, 0, 2) };
-                    meshNameGroupBox.DragEnter += DragEnterHandler;
-                    meshNameGroupBox.DragLeave += DragLeaveHandler;
-                    meshNameGroupBox.Drop += MaterialGroup_Drop;
-                    MaterialsPanel.Children.Add(meshNameGroupBox);
-
-                    Grid texturesGrid = new();
-                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Auto) });
-                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
-                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
-                    texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
-                    meshNameGroupBox.Content = texturesGrid;
-
-                    for (int i = 0; i < material.RenderGroup.SupportedTextureTypes.Count; i++)
-                    {
-                        if (material.Textures.Count <= i)
-                        {
-                            material.Textures.Add(new Texture());
-                        }
-                        Texture texture = material.Textures.ElementAt(i);
-
-                        texturesGrid.RowDefinitions.Add(new RowDefinition() );
-
-                        TextBlock textureTypeTextBlock = new() { Text = material.RenderGroup.SupportedTextureTypes[i].Code(), Margin = new(0, 0, 5, 0) };
-                        Grid.SetRow(textureTypeTextBlock, texturesGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(textureTypeTextBlock, 0);
-                        textureTypeTextBlock.Foreground = Brushes.Gray;
-                        textureTypeTextBlock.VerticalAlignment = VerticalAlignment.Center;
-                        texturesGrid.Children.Add(textureTypeTextBlock);
-
-                        TextBox translationTextBox = new() { Text = texture.TranslatedName };
-                        Grid.SetRow(translationTextBox, texturesGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(translationTextBox, 1);
-                        translationTextBox.Bind(TextBox.TextProperty, texture, "TranslatedName");
-                        translationTextBox.VerticalAlignment = VerticalAlignment.Center;
-                        texturesGrid.Children.Add(translationTextBox);
-
-                        TextBlock translatingTextBlock = new() { Text = texture.TranslatingName };
-                        Grid.SetRow(translatingTextBlock, texturesGrid.RowDefinitions.Count - 1);
-                        Grid.SetColumn(translatingTextBlock, 2);
-                        translatingTextBlock.Foreground = Brushes.Red;
-                        translatingTextBlock.VerticalAlignment = VerticalAlignment.Center;
-                        translatingTextBlock.Bind(TextBlock.TextProperty, texture, "TranslatingName");
-                        texturesGrid.Children.Add(translatingTextBlock);
-                    }
-
-                    StackPanel meshesPanel = new() { Orientation = Orientation.Vertical };
-                    Grid.SetRowSpan(meshesPanel, texturesGrid.RowDefinitions.Count);
-                    Grid.SetColumn(meshesPanel, 3);
-
-                    foreach (Mesh mesh in _loader.Meshes.Where(m => m.Material == material))
-                    {
-                        StackPanel meshLine = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-
-                        PortableColorPicker colorPicker = new() { Width = 15, Height = 15, Margin = new Thickness(0, 0, 2, 0), ShowAlpha = false, SelectedColor = mesh.Vertices.First().Color };
-                        colorPicker.ColorChanged += (sender, e) => { mesh.Vertices.ForEach(v => v.Color = colorPicker.SelectedColor); };
-                        meshLine.Children.Add(colorPicker);
-
-                        /*TextBlock meshTextBlock = new() { Text = mesh.TranslatedName, Tag = mesh };
-                        meshTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
-                        meshLine.Children.Add(meshTextBlock);*/
-
-                        ContextMenu contextMenu = new();
-                        MenuItem clone = new() { Header = "Clone" };
-                        MenuItem delete = new() { Header = "Delete" };
-                        clone.Click += (sender, e) => CloneMeshCommand_Executed(sender, mesh);
-                        delete.Click += (sender, e) => DeleteMeshCommand_Executed(sender, mesh);
-                        contextMenu.Items.Add(clone);
-                        contextMenu.Items.Add(delete);
-
-                        meshLine.Children.Add(new TextBlock
-                        {
-                            Text = "[ ]", FontWeight = FontWeights.Bold, Margin = new Thickness(2, 0, 2, 0), Tag = mesh, ContextMenu = contextMenu
-                        });
-
-                        TextBox translationTextBox = new() { Text = mesh.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
-                        translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedName");
-                        meshLine.Children.Add(translationTextBox);
+                    TextBox translationTextBox = new() { Text = mesh.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
+                    translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedName");
+                    meshLine.Children.Add(translationTextBox);
                         
-                        TextBlock translatingTextBlock = new()
-                        {
-                            Text = mesh.TranslatingName,
-                            Foreground = Brushes.Red
-                        };
-                        translatingTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatingName");
-                        meshLine.Children.Add(translatingTextBlock);
+                    TextBlock translatingTextBlock = new()
+                    {
+                        Text = mesh.TranslatingName,
+                        Foreground = Brushes.Red
+                    };
+                    translatingTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatingName");
+                    meshLine.Children.Add(translatingTextBlock);
 
-                        meshesPanel.Children.Add(meshLine);
-                    }
-
-                    texturesGrid.Children.Add(meshesPanel);
+                    meshesPanel.Children.Add(meshLine);
                 }
-            });
-        }
 
-
-        private void DragEnterHandler(object sender, DragEventArgs e)
-        {
-            if (sender is not Control control) return;
-            control.Background = Brushes.LightBlue;
-            e.Handled = true;
-        }
-        private void DragLeaveHandler(object sender, DragEventArgs e)
-        {
-            if (sender is not Control control) return;
-            control.Background = null;
-            e.Handled = true;
-        }
-
-        private void MaterialPanel_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (e is { LeftButton: MouseButtonState.Pressed, Source: TextBlock { Tag: Mesh m } })
-            {
-                DragDrop.DoDragDrop(MaterialsPanel, m, DragDropEffects.Move);
+                texturesGrid.Children.Add(meshesPanel);
             }
-        }
+        });
+    }
 
-        private void MaterialGroup_Drop(object sender, DragEventArgs e)
+
+    private void DragEnterHandler(object sender, DragEventArgs e)
+    {
+        if (sender is not Control control) return;
+        control.Background = Brushes.LightBlue;
+        e.Handled = true;
+    }
+    private void DragLeaveHandler(object sender, DragEventArgs e)
+    {
+        if (sender is not Control control) return;
+        control.Background = null;
+        e.Handled = true;
+    }
+
+    private void MaterialPanel_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (e is { LeftButton: MouseButtonState.Pressed, Source: TextBlock { Tag: Mesh m } })
         {
-            var target = sender as GroupBox;
-            var source = e.Data.GetData(typeof(Mesh)) as Mesh;
-            if (target?.Tag is Material material && source is not null && source.Material != material)
-            {
-                if (_loader.Meshes.Count(m => m.Material == source.Material) == 1)
-                    MaterialManager.Materials.Remove(source.Material);
-
-                source.Material = material;
-            }
-            DragLeaveHandler(sender, e);
-            e.Handled = true;
-            RenderMaterials();
+            DragDrop.DoDragDrop(MaterialsPanel, m, DragDropEffects.Move);
         }
-        private void MaterialPanel_Drop(object sender, DragEventArgs e)
+    }
+
+    private void MaterialGroup_Drop(object sender, DragEventArgs e)
+    {
+        var target = sender as GroupBox;
+        var source = e.Data.GetData(typeof(Mesh)) as Mesh;
+        if (target?.Tag is Material material && source is not null && source.Material != material)
         {
-            if (e.Data.GetData(typeof(Mesh)) is Mesh mesh)
-            {
-                if (_loader.Meshes.Count(m => m.Material == mesh.Material) == 1)
-                    MaterialManager.Materials.Remove(mesh.Material);
+            if (_loader.Meshes.Count(m => m.Material == source.Material) == 1)
+                MaterialManager.Materials.Remove(source.Material);
 
-                mesh.Material = new Material();
-                MaterialManager.Materials.Add(mesh.Material);
-            }
-            DragLeaveHandler(sender, e);
-            e.Handled = true;
-            RenderMaterials();
+            source.Material = material;
         }
+        DragLeaveHandler(sender, e);
+        e.Handled = true;
+        RenderMaterials();
+    }
+    private void MaterialPanel_Drop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(typeof(Mesh)) is Mesh mesh)
+        {
+            if (_loader.Meshes.Count(m => m.Material == mesh.Material) == 1)
+                MaterialManager.Materials.Remove(mesh.Material);
 
-        private void BoneTree_MouseMove(object sender, MouseEventArgs e)
+            mesh.Material = new Material();
+            MaterialManager.Materials.Add(mesh.Material);
+        }
+        DragLeaveHandler(sender, e);
+        e.Handled = true;
+        RenderMaterials();
+    }
+
+    private void BoneTree_MouseMove(object sender, MouseEventArgs e)
+    {
+        try
         {
             if (e.LeftButton == MouseButtonState.Pressed && BoneTree.SelectedItems.Count > 0)
             {
                 DragDrop.DoDragDrop(BoneTree, BoneTree.SelectedItems, DragDropEffects.All);
             }
         }
-
-        private void BoneTree_SelectedItemsChanged(object sender, List<TreeViewItem> items)
+        catch
         {
-            if (items.Count <= 0 || items[0] is not { Tag: Bone bone }) return;
-            SelectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
-            SelectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
-            SelectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position[2]");
-
-            if (OnlySelected.IsChecked == true)
-                Regex_Changed(sender, null);
+            // ignored
         }
+    }
 
-        private static bool CanDrop(ItemsControl source, TreeViewItem? target) 
+    private void BoneTree_SelectedItemsChanged(object sender, List<TreeViewItem> items)
+    {
+        if (items.Count <= 0 || items[0] is not { Tag: Bone bone }) return;
+        SelectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
+        SelectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
+        SelectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position[2]");
+
+        if (OnlySelected.IsChecked == true)
+            Regex_Changed(sender, null);
+    }
+
+    private static bool CanDrop(ItemsControl source, TreeViewItem? target) 
+    {
+        bool DeepContains(ItemsControl container, TreeViewItem item) => container == item || container.Items.Cast<TreeViewItem>().Any(i => DeepContains(i, item));
+        return target != null && !DeepContains(source, target) && source.Parent != target;
+    }
+
+    private static void Reparent(FrameworkElement source, ItemsControl target)
+    {
+        if (target.Tag is not Bone targetBone || source.Tag is not Bone draggedBone || source.Parent is not TreeViewItem parent) return;
+        parent.Items.Remove(source);
+        draggedBone.Parent = targetBone;
+        target.Items.Add(source);
+    }
+
+    private void TreeItem_Drop(object sender, DragEventArgs e)
+    {
+        List<TreeViewItem> sources = new(BoneTree.SelectedItems); // e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
+
+        var target = (TreeViewItem)sender;
+        sources.ForEach(source =>
         {
-            bool DeepContains(ItemsControl container, TreeViewItem item) => container == item || container.Items.Cast<TreeViewItem>().Any(i => DeepContains(i, item));
-            return target != null && !DeepContains(source, target) && source.Parent != target;
-        }
-
-        private static void Reparent(FrameworkElement source, ItemsControl target)
-        {
-            if (target.Tag is not Bone targetBone || source.Tag is not Bone draggedBone || source.Parent is not TreeViewItem parent) return;
-            parent.Items.Remove(source);
-            draggedBone.Parent = targetBone;
-            target.Items.Add(source);
-        }
-
-        private void TreeItem_Drop(object sender, DragEventArgs e)
-        {
-            List<TreeViewItem> sources = new(BoneTree.SelectedItems); // e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
-
-            var target = (TreeViewItem)sender;
-            sources.ForEach(source =>
+            if (CanDrop(source, target)) 
             {
-                if (CanDrop(source, target)) 
-                {
-                    Reparent(source, target);
-                }
-
-            });
-            DragLeaveHandler(sender, e);
-            e.Handled = true;
-        }
-        private void CutBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
-        {
-            e.CanExecute = BoneTree.SelectedItems.Count > 0;
-        }
-        private void CutBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
-        {
-            _cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; } ) ;
-            _cutBones = new List<TreeViewItem>(BoneTree.SelectedItems);
-            _cutBones.ForEach(t => { t.Foreground = Brushes.Gray; t.FontWeight = FontWeights.Bold; });
-        }
-        private void PasteBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
-        {
-            e.CanExecute = _cutBones.Count > 0 && BoneTree.SelectedItems.Count == 1 && _cutBones.Any(t => CanDrop(t, BoneTree.SelectedItems.First()));
-        }
-        private void PasteBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
-        {
-            var target = BoneTree.SelectedItems.First();
-            _cutBones.ForEach(source =>
-            {
-                if (CanDrop(source, target))
-                {
-                    Reparent(source, target);
-                }
-
-            });
-            _cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; });
-            _cutBones.Clear();
-        }
-        private void NewBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
-        {
-            e.CanExecute = BoneTree.SelectedItems.Count == 1;
-        }
-        private void NewBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
-        {
-            _loader.AddBone(BoneTree.SelectedItems.First().Tag as Bone);
-            RenderBoneTree();
-        }
-        private void MakeRootBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
-        {
-            e.CanExecute = BoneTree.SelectedItems.Count == 1;
-        }
-        private void MakeRootBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
-        {
-            if (BoneTree.SelectedItems.First().Tag is not Bone bone) return;
-            _loader.MakeRoot(bone);
-            RenderBoneTree();
-        }
-
-        private void CloneMeshCommand_Executed(object sender, Mesh mesh)
-        {
-            _loader.CloneMesh(mesh);
-            RenderMaterials();
-        }
-        private void DeleteMeshCommand_Executed(object sender, Mesh mesh)
-        {
-            _loader.DeleteMesh(mesh);
-            RenderMaterials();
-        }
-
-        private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            BoneTreeScroll.ScrollToVerticalOffset(BoneTreeScroll.VerticalOffset - e.Delta / 3);
-        }
-
-        private void LoadMeshAsciiFile(string fileName)
-        {
-            _originalMeshAsciiName ??= string.Join("",fileName.SkipLast(".mesh.ascii".Length));
-
-            _loader.LoadAsciiFile(fileName);
-
-            RenderBoneTree();
-            RenderMaterials();
-
-            Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
-            Progress.Dispatcher.Invoke(() => Progress.Visibility = Visibility.Visible);
-        }
-
-        private void LoadMeshFileDialog(object sender, RoutedEventArgs e)
-        {
-            SavingMessage.Content = "Loading, please wait.";
-
-            OpenFileDialog ofd = new()
-            {
-                CheckFileExists = true,
-                Title = "Select the .mesh.ascii file to edit",
-                Filter = "XPS .mesh.ascii|*.mesh.ascii",
-                Multiselect = false
-            };
-            if (ofd.ShowDialog() == true)
-            {
-                Saving.Visibility = Visibility.Visible;
-                Progress.Visibility = Visibility.Hidden;
-
-                LoadMeshAsciiFile(ofd.FileName);
+                Reparent(source, target);
             }
-        }
 
-        private void LoadBonesFile(string fileName, bool keepAll = true)
+        });
+        DragLeaveHandler(sender, e);
+        e.Handled = true;
+    }
+    private void CutBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = BoneTree.SelectedItems.Count > 0;
+    }
+    private void CutBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        _cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; } ) ;
+        _cutBones = new List<TreeViewItem>(BoneTree.SelectedItems);
+        _cutBones.ForEach(t => { t.Foreground = Brushes.Gray; t.FontWeight = FontWeights.Bold; });
+    }
+    private void PasteBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = _cutBones.Count > 0 && BoneTree.SelectedItems.Count == 1 && _cutBones.Any(t => CanDrop(t, BoneTree.SelectedItems.First()));
+    }
+    private void PasteBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        var target = BoneTree.SelectedItems.First();
+        _cutBones.ForEach(source =>
         {
-            _originalBonedictName = fileName;
-
-            _loader.LoadBoneFile(fileName, keepAll);
-
-            RenderBoneTree();
-        }
-
-        private void LoadBonesFileDialog(object sender, RoutedEventArgs e)
-        {
-            SavingMessage.Content = "Loading, please wait.";
-
-            OpenFileDialog ofd = new()
+            if (CanDrop(source, target))
             {
-                CheckFileExists = true,
-                Title = "Select the bone list names to load",
-                Filter = "BoneDict file|*.txt",
-                Multiselect = false
-            };
-            if (ofd.ShowDialog() == true)
-            {
-                LoadBonesFile(ofd.FileName);
+                Reparent(source, target);
             }
-        }
 
-        private void SaveBonesFileDialog(object sender, RoutedEventArgs e)
+        });
+        _cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; });
+        _cutBones.Clear();
+    }
+    private void NewBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = BoneTree.SelectedItems.Count == 1;
+    }
+    private void NewBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        _loader.AddBone(BoneTree.SelectedItems.First().Tag as Bone);
+        RenderBoneTree();
+    }
+    private void MakeRootBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = BoneTree.SelectedItems.Count == 1;
+    }
+    private void MakeRootBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (BoneTree.SelectedItems.First().Tag is not Bone bone) return;
+        _loader.MakeRoot(bone);
+        RenderBoneTree();
+    }
+
+    private void CloneMeshCommand_Executed(object sender, Mesh mesh)
+    {
+        _loader.CloneMesh(mesh);
+        RenderMaterials();
+    }
+    private void DeleteMeshCommand_Executed(object sender, Mesh mesh)
+    {
+        _loader.DeleteMesh(mesh);
+        RenderMaterials();
+    }
+
+    private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        BoneTreeScroll.ScrollToVerticalOffset(BoneTreeScroll.VerticalOffset - e.Delta / 3);
+    }
+
+    private void LoadMeshAsciiFile(string fileName)
+    {
+        _originalMeshAsciiName ??= string.Join("",fileName.SkipLast(".mesh.ascii".Length));
+        _originalPoseName = null;
+        SaveMeshButton.Visibility = Visibility.Visible;
+        SaveBoneDictButton.Visibility = Visibility.Visible;
+        UnloadAllButton.Visibility = Visibility.Visible;
+
+        _loader.LoadAsciiFile(fileName);
+
+        Refresh();
+
+        Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
+        Progress.Dispatcher.Invoke(() => Progress.Visibility = Visibility.Visible);
+    }
+    private void LoadPoseFile(string fileName)
+    {
+        _originalPoseName ??= string.Join("",fileName.SkipLast(".pose".Length));
+        _originalMeshAsciiName = null;
+        SaveMeshButton.Visibility = Visibility.Visible;
+        SaveBoneDictButton.Visibility = Visibility.Visible;
+        UnloadAllButton.Visibility = Visibility.Visible;
+
+        _loader.LoadPoseFile(fileName);
+
+        Refresh();
+
+        Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
+        Progress.Dispatcher.Invoke(() => Progress.Visibility = Visibility.Visible);
+    }
+
+    private void LoadMeshFileDialog(object sender, RoutedEventArgs e)
+    {
+        SavingMessage.Content = "Loading, please wait.";
+
+        OpenFileDialog ofd = new()
         {
-            SavingMessage.Content = "Saving, please wait.";
+            CheckFileExists = true,
+            Title = "Select the .mesh.ascii file to edit",
+            Filter = "XPS .mesh.ascii|*.mesh.ascii|XPS .pose|*.pose",
+            Multiselect = false
+        };
+        if (ofd.ShowDialog() != true) return;
+        Saving.Visibility = Visibility.Visible;
+        Progress.Visibility = Visibility.Hidden;
 
-            SaveFileDialog sfd = new()
-            {
-                Title = "Select where to save the bone list names",
-                AddExtension = true,
-                Filter = "BoneDict file|*.txt",
-                FileName = _originalBonedictName ?? "Bonedict"
-            };
-            if (sfd.ShowDialog() == true)
-            {
-                Progress.Maximum = _loader.Bones.Count(b => b.OriginalName != b.TranslatedName);
-                Progress.Value = 0;
-                Saving.Visibility = Visibility.Visible;
-                new Thread(() => _loader.SaveBones(sfd.FileName, IncreaseProgress)).Start();
-            }
-        }
+        if(ofd.FileName.EndsWith(".mesh.ascii"))
+            LoadMeshAsciiFile(ofd.FileName);
+        if(ofd.FileName.EndsWith(".pose"))
+            LoadPoseFile(ofd.FileName);
+    }
 
-        private void SaveMeshFileDialog(object sender, RoutedEventArgs e)
+    private void LoadBonesFile(string fileName, bool keepAll = true)
+    {
+        _originalBonedictName = fileName;
+
+        _loader.LoadBoneFile(fileName, keepAll);
+
+        RenderBoneTree();
+    }
+
+    private void LoadBonesFileDialog(object sender, RoutedEventArgs e)
+    {
+        SavingMessage.Content = "Loading, please wait.";
+
+        OpenFileDialog ofd = new()
         {
-            SavingMessage.Content = "Saving, please wait.";
+            CheckFileExists = true,
+            Title = "Select the bone list names to load",
+            Filter = "BoneDict file|*.txt",
+            Multiselect = false
+        };
+        if (ofd.ShowDialog() == true)
+        {
+            LoadBonesFile(ofd.FileName);
+        }
+    }
 
-            SaveFileDialog sfd = new()
-            {
-                Title = "Select where to save the resulting mesh",
-                AddExtension = true,
-                Filter = "XPS .mesh.ascii|*.mesh.ascii",
-                FileName = _originalMeshAsciiName != null ? _originalMeshAsciiName + "_renamed" : "generic_item"
-            };
-            if (sfd.ShowDialog() != true) return;
-            Progress.Maximum = _loader.Bones.Count(b => b.FromMeshAscii) + _loader.Meshes.Count;
+    private void SaveBonesFileDialog(object sender, RoutedEventArgs e)
+    {
+        SavingMessage.Content = "Saving, please wait.";
+
+        SaveFileDialog sfd = new()
+        {
+            Title = "Select where to save the bone list names",
+            AddExtension = true,
+            Filter = "BoneDict file|*.txt",
+            FileName = _originalBonedictName ?? "Bonedict"
+        };
+        if (sfd.ShowDialog() == true)
+        {
+            Progress.Maximum = _loader.Bones.Count(b => b.OriginalName != b.TranslatedName);
             Progress.Value = 0;
             Saving.Visibility = Visibility.Visible;
+            new Thread(() => _loader.SaveBones(sfd.FileName, IncreaseProgress)).Start();
+        }
+    }
 
-            new Thread(() =>
+    private void SaveMeshFileDialog(object sender, RoutedEventArgs e)
+    {
+        SavingMessage.Content = "Saving, please wait.";
+
+        SaveFileDialog sfd = new()
+        {
+            Title = "Select where to save the resulting mesh",
+            AddExtension = true,
+            Filter = "XPS .mesh.ascii|*.mesh.ascii|XPS .pose|*.pose",
+            FilterIndex = string.IsNullOrEmpty(_originalPoseName) ? 1 : 2,
+            FileName = (_originalMeshAsciiName ?? _originalPoseName ?? "generic_item") + "_renamed"
+        };
+        if (sfd.ShowDialog() != true) return;
+        Progress.Maximum = _loader.Bones.Count(b => b.FromMeshAscii) + _loader.Meshes.Count;
+        Progress.Value = 0;
+        Saving.Visibility = Visibility.Visible;
+
+        new Thread(() =>
+        {
+            if (sfd.FileName.EndsWith(".mesh.ascii"))
             {
                 if (_loader.SaveAscii(sfd.FileName, IncreaseProgress)) return;
-                MessageBox.Show("conflicting bone and/or mesh names found, solve them before saving", "Conflict found", MessageBoxButton.OK, MessageBoxImage.Error, MessageBoxResult.OK);
+                MessageBox.Show("conflicting bone and/or mesh names found, solve them before saving", "Conflict found", MessageBoxButton.OK,
+                    MessageBoxImage.Error, MessageBoxResult.OK);
                 Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
-            }).Start();
-        }
-
-        private void UnloadAll(object sender, RoutedEventArgs e)
-        {
-            _loader.Bones.Clear();
-            _loader.Meshes.Clear();
-            MaterialManager.Materials.Clear();
-            RenderBoneTree();
-            RenderMaterials();
-            _originalBonedictName = null;
-            _originalMeshAsciiName = null;
-        }
-        
-        private void IncreaseProgress()
-        {
-            Progress.Dispatcher.Invoke(() =>
-            {
-                Progress.Value++;
-                if (Progress.Value >= Progress.Maximum)
-                    Saving.Visibility = Visibility.Hidden;
-            });
-        }
-
-        private void Window_Drop(object sender, DragEventArgs e)
-        {
-            var fileNames = e.Data.GetData(DataFormats.FileDrop) as string[];
-            fileNames?.ToList().ForEach(fileName =>
-            {
-                if (fileName.EndsWith(".mesh.ascii")) LoadMeshAsciiFile(fileName);
-                if (fileName.EndsWith(".txt")) LoadBonesFile(fileName);
-            });
-        }
-        
-        private static async Task<bool> UserKeepsTyping(TextBox t, int delay = 500) {
-            var txt = t.Text;
-            await Task.Delay(delay);
-            return txt != t.Text;
-        }
-
-        private async void Filter_Changed(object sender, EventArgs e)
-        {
-            if(sender is TextBox t && await UserKeepsTyping(t)) return;
-
-            RenderBoneTree();
-            RenderMaterials();
-        }
-        
-        private async void Regex_Changed(object sender, EventArgs? e)
-        {
-            if(sender is TextBox t && await UserKeepsTyping(t)) return;
-
-            bool IsIncluded(Bone b)
-            {
-                if (OnlySelected.IsChecked != true) return true;
-                if (Children.IsChecked == true)
-                    return BoneTree.SelectedItems.Any(item => item.Tag == b) || (b.Parent != null && IsIncluded(b.Parent));
-                return BoneTree.SelectedItems.Any(item => item.Tag == b);
             }
+
+            if (sfd.FileName.EndsWith(".pose"))
+            {
+                _loader.SavePose(sfd.FileName, IncreaseProgress);
+            }
+        }).Start();
+    }
+
+    private void UnloadAll(object sender, RoutedEventArgs e)
+    {
+        _loader.Bones.Clear();
+        _loader.Meshes.Clear();
+        MaterialManager.Materials.Clear();
+        Refresh();
+        _originalBonedictName = null;
+        _originalMeshAsciiName = null;
+        _originalPoseName = null;
+        SaveMeshButton.Visibility = Visibility.Collapsed;
+        SaveBoneDictButton.Visibility = Visibility.Collapsed;
+        UnloadAllButton.Visibility = Visibility.Collapsed;
+    }
+        
+    private void IncreaseProgress()
+    {
+        Progress.Dispatcher.Invoke(() =>
+        {
+            Progress.Value++;
+            if (Progress.Value >= Progress.Maximum)
+                Saving.Visibility = Visibility.Hidden;
+        });
+    }
+
+    private void Window_Drop(object sender, DragEventArgs e)
+    {
+        var fileNames = e.Data.GetData(DataFormats.FileDrop) as string[];
+        fileNames?.ToList().ForEach(fileName =>
+        {
+            if (fileName.EndsWith(".mesh.ascii")) LoadMeshAsciiFile(fileName);
+            if (fileName.EndsWith(".pose")) LoadPoseFile(fileName);
+            if (fileName.EndsWith(".txt")) LoadBonesFile(fileName);
+        });
+    }
+        
+    private static async Task<bool> UserKeepsTyping(TextBox t, int delay = 500) {
+        var txt = t.Text;
+        await Task.Delay(delay);
+        return txt != t.Text;
+    }
+
+    private async void Filter_Changed(object sender, EventArgs e)
+    {
+        if(sender is TextBox t && await UserKeepsTyping(t)) return;
+
+        Refresh();
+    }
+        
+    private async void Regex_Changed(object sender, EventArgs? e)
+    {
+        if(sender is TextBox t && await UserKeepsTyping(t)) return;
+
+        bool IsIncluded(Bone b)
+        {
+            if (OnlySelected.IsChecked != true) return true;
+            if (Children.IsChecked == true)
+                return BoneTree.SelectedItems.Any(item => item.Tag == b) || (b.Parent != null && IsIncluded(b.Parent));
+            return BoneTree.SelectedItems.Any(item => item.Tag == b);
+        }
             
-            var renameIndexes = new Dictionary<string, int>();
-            _loader.Bones.ForEach(b => b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, !IsIncluded(b)));
-            renameIndexes = new Dictionary<string, int>();
-            _loader.Meshes.ForEach(m => m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == false));
-            renameIndexes = new Dictionary<string, int>();
-            _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(tex => tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == true));
-        }
+        var renameIndexes = new Dictionary<string, int>();
+        _loader.Bones.ForEach(b => b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, !IsIncluded(b)));
+        renameIndexes = new Dictionary<string, int>();
+        _loader.Meshes.ForEach(m => m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == false));
+        renameIndexes = new Dictionary<string, int>();
+        _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(tex => tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == true));
+    }
 
-        private void ApplyRename(object sender, RoutedEventArgs e)
+    private void ApplyRename(object sender, RoutedEventArgs e)
+    {
+        if (_selectedTab == TabBones)
+            FilteredBones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+        if (_selectedTab == TabMaterials)
         {
-            switch (_selectedTab)
-            {
-                case "Bones":
-                    FilteredBones.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
-                    break;
-                default:
-                    if (RenameMeshes.IsChecked == true)
-                        FilteredMeshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
-                    else
-                        _loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList()
-                            .ForEach(b => b.TranslatedName = b.TranslatingName!);
-                    break;
-            }
-
-            Regex_Changed(RegexResult, null);
+            if (RenameMeshes.IsChecked == true)
+                FilteredMeshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
+            else
+                _loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList()
+                    .ForEach(b => b.TranslatedName = b.TranslatingName!);
         }
 
-        private void TabSelected(object sender, RoutedEventArgs e)
-        {
-            if (sender is not TabControl { SelectedItem: TabItem tab }) return;
-            _selectedTab = tab.Header.ToString()!;
-            OnlySelected.Visibility = _selectedTab == "Bones" ? Visibility.Visible : Visibility.Collapsed;
-            Children.Visibility = _selectedTab == "Bones" ? Visibility.Visible : Visibility.Collapsed;
-            RenameMeshes.Visibility = _selectedTab == "Bones" ? Visibility.Collapsed : Visibility.Visible;
-        }
+        Regex_Changed(RegexResult, null);
+    }
 
-        private void MenuItem_Click(object sender, RoutedEventArgs e)
-        {
-
-        }
-
+    private void TabSelected(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TabControl { SelectedItem: TabItem tab }) return;
+        _selectedTab = tab;
+        OnlySelected.Visibility = _selectedTab == TabBones ? Visibility.Visible : Visibility.Collapsed;
+        Children.Visibility = _selectedTab == TabBones ? Visibility.Visible : Visibility.Collapsed;
+        RenameMeshes.Visibility = _selectedTab == TabBones ? Visibility.Collapsed : Visibility.Visible;
+        Refresh();
     }
 }
