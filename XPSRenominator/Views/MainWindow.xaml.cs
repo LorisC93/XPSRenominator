@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     }
 
     private List<TreeViewItem> _cutBones = new();
+    private bool _canDoDragDropOperation = true;
 
     private IEnumerable<Bone> FilteredBones
     {
@@ -81,11 +82,14 @@ public partial class MainWindow : Window
 
             header.Children.Add(new TextBlock
             {
-                Text = $"[{(bone.FromMeshAscii ? " " : "*")}{bone.OriginalName}]", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 5, 0)
+                Text = $"[{(bone.FromMeshAscii ? "" : "*")}{bone.OriginalName}]", FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 5, 0)
             });
 
             TextBox translationTextBox = new() { Text = bone.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
             translationTextBox.Bind(TextBox.TextProperty, bone, "TranslatedName");
+            translationTextBox.GotFocus += (sender, e) => _canDoDragDropOperation = false;
+            translationTextBox.LostFocus += (sender, e) => _canDoDragDropOperation = true;
+            translationTextBox.AllowDrop = false;
             header.Children.Add(translationTextBox);
                 
             TextBlock translatingTextBlock = new()
@@ -147,13 +151,9 @@ public partial class MainWindow : Window
             {
                 StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal, AllowDrop = true };
 
-                ComboBox meshRenderGroupComboBox = new() { ItemsSource = RenderGroup.List, SelectedItem = material.RenderGroup, Margin = new Thickness(0, 0, 5, 0) };
-                meshRenderGroupComboBox.Bind(Selector.SelectedItemProperty, material, "RenderGroup");
-                meshRenderGroupComboBox.SelectionChanged += delegate
-                {
-                    RenderMaterials();
-                };
-                groupBoxHeader.Children.Add(meshRenderGroupComboBox);
+                //TextBlock meshRenderGroupTextBlock = new() { Text = material.RenderGroup?.ToString(), Margin = new Thickness(0, 0, 5, 0) };
+                // meshRenderGroupTextBlock.Bind(TextBlock.TextProperty, material, "RenderGroup");
+                //groupBoxHeader.Children.Add(meshRenderGroupTextBlock);
 
                 TextBox meshRenderParameter1 = new() { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25 };
                 TextBox meshRenderParameter2 = new() { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25 };
@@ -165,6 +165,10 @@ public partial class MainWindow : Window
                 groupBoxHeader.Children.Add(meshRenderParameter2);
                 groupBoxHeader.Children.Add(meshRenderParameter3);
 
+                CheckBox alphaEnabledCheckBox = new() { Content = "Alpha Enabled", IsChecked = material.AlphaEnabled, Margin = new Thickness(5, 0, 0, 0) };
+                alphaEnabledCheckBox.Bind(ToggleButton.IsCheckedProperty, material, "AlphaEnabled");
+                groupBoxHeader.Children.Add(alphaEnabledCheckBox);
+
                 GroupBox meshNameGroupBox = new() { Header = groupBoxHeader, Tag = material, Padding = new Thickness(0, 2, 0, 2) };
                 meshNameGroupBox.DragEnter += DragEnterHandler;
                 meshNameGroupBox.DragLeave += DragLeaveHandler;
@@ -172,30 +176,28 @@ public partial class MainWindow : Window
                 MaterialsPanel.Children.Add(meshNameGroupBox);
 
                 Grid texturesGrid = new();
-                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition() { Width = new GridLength(1, GridUnitType.Auto) });
-                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
-                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
-                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition());
+                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(1, GridUnitType.Auto) });
+                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(1, GridUnitType.Star) });
+                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(1, GridUnitType.Auto) });
+                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(2, GridUnitType.Star) });
                 meshNameGroupBox.Content = texturesGrid;
 
-                for (int i = 0; i < material.RenderGroup.SupportedTextureTypes.Count; i++)
+                foreach (var textureType in RenderGroupUtils.TextureTypes)
                 {
-                    if (material.Textures.Count <= i)
-                    {
-                        material.Textures.Add(new Texture());
-                    }
-                    Texture texture = material.Textures.ElementAt(i);
+                    material.Textures.TryAdd(textureType, new Texture());
+
+                    material.Textures.TryGetValue(textureType, out var texture);
 
                     texturesGrid.RowDefinitions.Add(new RowDefinition() );
 
-                    TextBlock textureTypeTextBlock = new() { Text = material.RenderGroup.SupportedTextureTypes[i].Code(), Margin = new(0, 0, 5, 0) };
+                    TextBlock textureTypeTextBlock = new() { Text = textureType.Code(), Margin = new Thickness(0, 0, 5, 0) };
                     Grid.SetRow(textureTypeTextBlock, texturesGrid.RowDefinitions.Count - 1);
                     Grid.SetColumn(textureTypeTextBlock, 0);
                     textureTypeTextBlock.Foreground = Brushes.Gray;
                     textureTypeTextBlock.VerticalAlignment = VerticalAlignment.Center;
                     texturesGrid.Children.Add(textureTypeTextBlock);
 
-                    TextBox translationTextBox = new() { Text = texture.TranslatedName };
+                    TextBox translationTextBox = new() { Text = texture!.TranslatedName };
                     Grid.SetRow(translationTextBox, texturesGrid.RowDefinitions.Count - 1);
                     Grid.SetColumn(translationTextBox, 1);
                     translationTextBox.Bind(TextBox.TextProperty, texture, "TranslatedName");
@@ -211,7 +213,7 @@ public partial class MainWindow : Window
                     texturesGrid.Children.Add(translatingTextBlock);
                 }
 
-                StackPanel meshesPanel = new() { Orientation = Orientation.Vertical };
+                StackPanel meshesPanel = new() { Orientation = Orientation.Vertical, VerticalAlignment = VerticalAlignment.Center};
                 Grid.SetRowSpan(meshesPanel, texturesGrid.RowDefinitions.Count);
                 Grid.SetColumn(meshesPanel, 3);
 
@@ -219,7 +221,7 @@ public partial class MainWindow : Window
                 {
                     StackPanel meshLine = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
 
-                    PortableColorPicker colorPicker = new() { Width = 15, Height = 15, Margin = new Thickness(0, 0, 2, 0), ShowAlpha = false, SelectedColor = mesh.Vertices.First().Color };
+                    PortableColorPicker colorPicker = new() { Width = 15, Height = 15, Margin = new Thickness(2, 0, 2, 0), ShowAlpha = false, SelectedColor = mesh.Vertices.First().Color };
                     colorPicker.ColorChanged += (sender, e) => { mesh.Vertices.ForEach(v => v.Color = colorPicker.SelectedColor); };
                     meshLine.Children.Add(colorPicker);
 
@@ -316,9 +318,10 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (e.LeftButton == MouseButtonState.Pressed && BoneTree.SelectedItems.Count > 0)
+            if (e.LeftButton == MouseButtonState.Pressed && BoneTree.SelectedItems.Count > 0 && _canDoDragDropOperation)
             {
-                DragDrop.DoDragDrop(BoneTree, BoneTree.SelectedItems, DragDropEffects.All);
+                Dispatcher.BeginInvoke(new Action(() => DragDrop.DoDragDrop(BoneTree, BoneTree.SelectedItems, DragDropEffects.All)),
+                    System.Windows.Threading.DispatcherPriority.Render);
             }
         }
         catch
@@ -354,7 +357,7 @@ public partial class MainWindow : Window
 
     private void TreeItem_Drop(object sender, DragEventArgs e)
     {
-        List<TreeViewItem> sources = new(BoneTree.SelectedItems); // e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
+        var sources = new List<TreeViewItem>(BoneTree.SelectedItems); // e.Data.GetData(typeof(TreeViewItem)) as TreeViewItem;
 
         var target = (TreeViewItem)sender;
         sources.ForEach(source =>
@@ -552,7 +555,7 @@ public partial class MainWindow : Window
             if (sfd.FileName.EndsWith(".mesh.ascii"))
             {
                 if (_loader.SaveAscii(sfd.FileName, IncreaseProgress)) return;
-                MessageBox.Show("conflicting bone and/or mesh names found, solve them before saving", "Conflict found", MessageBoxButton.OK,
+                MessageBox.Show("conflicting bone and/or mesh names found, or invalid Materials, solve them before saving", "Conflict found", MessageBoxButton.OK,
                     MessageBoxImage.Error, MessageBoxResult.OK);
                 Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
             }
@@ -629,7 +632,7 @@ public partial class MainWindow : Window
         renameIndexes = new Dictionary<string, int>();
         _loader.Meshes.ForEach(m => m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == false));
         renameIndexes = new Dictionary<string, int>();
-        _loader.Meshes.SelectMany(m => m.Material.Textures).ToList().ForEach(tex => tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == true));
+        _loader.Meshes.SelectMany(m => m.Material.Textures.Values).ToList().ForEach(tex => tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == true));
     }
 
     private void ApplyRename(object sender, RoutedEventArgs e)
@@ -641,7 +644,7 @@ public partial class MainWindow : Window
             if (RenameMeshes.IsChecked == true)
                 FilteredMeshes.Where(b => b.TranslatingName != null).ToList().ForEach(b => b.TranslatedName = b.TranslatingName!);
             else
-                _loader.Meshes.SelectMany(m => m.Material.Textures).Where(b => b.TranslatingName != null).ToList()
+                _loader.Meshes.SelectMany(m => m.Material.Textures.Values).Where(b => b.TranslatingName != null).ToList()
                     .ForEach(b => b.TranslatedName = b.TranslatingName!);
         }
 

@@ -1,30 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using XPSRenominator.Models;
 
-namespace XPSRenominator.Controllers
-{
-    public static class MaterialManager
-    {
-        public static List<Material> Materials { get; } = new();
+namespace XPSRenominator.Controllers;
 
-        public static Material FindOrCreate(int renderGroupID, List<Texture> textures, float[] parameters)
+public static class MaterialManager
+{
+    public static List<Material> Materials { get; } = new();
+
+    public static Material FindOrCreate(int renderGroupId, List<Texture> textures, float[] parameters)
+    {
+        var found = Materials.Find(m => m.RenderGroup?.Id == renderGroupId && m.ActiveTextures.Values.SequenceEqual(textures) && m.RenderParameters.SequenceEqual(parameters));
+        if (found != null)
+            return found;
+
+        var rg = RenderGroup.ById(renderGroupId)!;
+        var newMat = new Material
         {
-            Material? found = Materials.Find(m => m.RenderGroup.ID == renderGroupID && m.Textures.SequenceEqual(textures) && m.RenderParameters.SequenceEqual(parameters));
-            if (found != null)
-                return found;
-            else 
-            {
-                Material newMat = new()
-                {
-                    Textures = textures,
-                    RenderGroup = RenderGroup.ByID(renderGroupID)!,
-                    RenderParameters = parameters
-                };
-                Materials.Add(newMat);
-                return newMat;
-            }
-        }
+            Textures = rg.SupportedTextureTypes.Zip(textures).ToDictionary(x => x.First, x => x.Second),
+            RenderParameters = parameters
+        };
+        Materials.Add(newMat);
+        return newMat;
     }
 }

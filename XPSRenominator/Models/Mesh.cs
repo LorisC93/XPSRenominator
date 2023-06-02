@@ -7,7 +7,7 @@ using System.Windows.Media;
 
 namespace XPSRenominator.Models
 {
-    class Mesh : Translatable, ICloneable
+    internal class Mesh : Translatable, ICloneable
     {
         public Material Material { get; set; } = new();
 
@@ -24,36 +24,44 @@ namespace XPSRenominator.Models
                 Material = this.Material,
                 UvLayers = this.UvLayers,
                 Vertices = this.Vertices.Select(v => (Vertex)v.Clone()).ToList(),
-                Faces = new(this.Faces),
-
+                Faces = new List<Face>(this.Faces),
             };
         }
     }
 
     public class Material : INotifyPropertyChanged, ICloneable
     {
-        private float[] renderParameters = new float[3] { 1, 0, 0 };
-        private RenderGroup renderGroup = RenderGroup.OnlyDiffuse;
+        private float[] _renderParameters = { 1, 0, 0 };
+        private bool _alphaEnabled = true;
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public RenderGroup RenderGroup
-        {
-            get => renderGroup; set
-            {
-                renderGroup = value;
-                OnPropertyChanged();
-            }
-        }
         public float[] RenderParameters
         {
-            get => renderParameters; set
+            get => _renderParameters;
+            set
             {
-                renderParameters = value;
+                _renderParameters = value;
                 OnPropertyChanged();
             }
         }
-        public List<Texture> Textures { get; set; } = new();
+        public bool AlphaEnabled
+        {
+            get => _alphaEnabled;
+            set
+            {
+                _alphaEnabled = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public Dictionary<TextureType, Texture> Textures { get; set; } = new();
+
+        public Dictionary<TextureType, Texture> ActiveTextures => Textures
+            .Where(d => !string.IsNullOrWhiteSpace(d.Value.TranslatedName))
+            .ToDictionary(x => x.Key, x => x.Value);
+
+        public RenderGroup? RenderGroup => RenderGroup.ByTextures(ActiveTextures.Keys, AlphaEnabled);
 
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
         {
@@ -64,9 +72,8 @@ namespace XPSRenominator.Models
         {
             return new Material
             {
-                RenderGroup = this.RenderGroup,
-                RenderParameters = this.RenderParameters,
-                Textures = new (this.Textures)
+                RenderParameters = RenderParameters,
+                Textures = new Dictionary<TextureType, Texture>(Textures)
             };
         }
     }
@@ -76,15 +83,15 @@ namespace XPSRenominator.Models
         public int UvLayer { get; set; } = 0;
 
         public override bool Equals(object? obj) => obj is Texture t && TranslatedName == t.TranslatedName && UvLayer == t.UvLayer;
-        public override int GetHashCode() => base.GetHashCode();
+        public override int GetHashCode() => TranslatedName.GetHashCode();
     }
     public class Vertex: ICloneable
     {
         public double[] Position { get; set; } = new double[3]; //XYZ
         public double[] Normal { get; set; } = new double[3]; //XYZ
         public Color Color { get; set; } = new(); //RGBA
-        public double[] UV { get; set; } = new double[2]; //UV
-        public double[]? UV2 { get; set; } //UV
+        public double[] Uv { get; set; } = new double[2]; //UV
+        public double[]? Uv2 { get; set; } //UV
         public List<VertexBone> Bones { get; set; } = new();
 
         public object Clone()
@@ -94,8 +101,8 @@ namespace XPSRenominator.Models
                 Position = this.Position,
                 Normal = this.Normal,
                 Color = System.Windows.Media.Color.FromArgb(this.Color.A, this.Color.R, this.Color.G, this.Color.B),
-                UV = this.UV,
-                UV2 = this.UV2,
+                Uv = this.Uv,
+                Uv2 = this.Uv2,
                 Bones = this.Bones,
             };
         }

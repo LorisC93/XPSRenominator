@@ -167,8 +167,8 @@ namespace XPSRenominator.Controllers
                         Position = originalLines[pointer++].ExtractDoubleArray(),
                         Normal = originalLines[pointer++].ExtractDoubleArray(),
                         Color = originalLines[pointer++].ExtractByteArray().ToColor(),
-                        UV = originalLines[pointer++].ExtractDoubleArray(),
-                        UV2 = mesh.UvLayers == 2 ? originalLines[pointer++].ExtractDoubleArray() : null,
+                        Uv = originalLines[pointer++].ExtractDoubleArray(),
+                        Uv2 = mesh.UvLayers == 2 ? originalLines[pointer++].ExtractDoubleArray() : null,
                         Bones = Utils.CreateVertexBones(originalLines[pointer++].ExtractIntArray(), originalLines[pointer++].ExtractDoubleArray(), bonesToUse)
                     });
                 }
@@ -185,7 +185,7 @@ namespace XPSRenominator.Controllers
         {
             string[] parts = line.Split('_');
 
-            int renderGroupID = int.Parse(parts[0]);
+            int renderGroupId = int.Parse(parts[0]);
 
             bool paramsPresent = parts.Length >= 5 && parts.TakeLast(3).All(p => float.TryParse(p, out float _));
 
@@ -207,7 +207,7 @@ namespace XPSRenominator.Controllers
             if (paramsPresent)
                 parameters = parts.TakeLast(3).Select(v => float.Parse(v)).ToArray();
 
-            return (renderGroupID, name, parameters);
+            return (renderGroupId, name, parameters);
         }
 
         public void AddBone(Bone? parent = null)
@@ -287,7 +287,7 @@ namespace XPSRenominator.Controllers
 
         public bool SaveAscii(string fileName, Action increaseProgress)
         {
-            if (GetBoneConflicts().Count > 0 || GetMeshConflicts().Count > 0)
+            if (GetBoneConflicts().Count > 0 || GetMeshConflicts().Count > 0 || Meshes.Any(m => m.Material.RenderGroup == null))
             {
                 return false;
             }
@@ -302,40 +302,37 @@ namespace XPSRenominator.Controllers
                 increaseProgress();
             });
             file.WriteLine(Meshes.Count + " # meshes");
-            Meshes.ForEach(b =>
+            Meshes.ForEach(mesh =>
             {
-                file.WriteLine(b.Material.RenderGroup.ID + "_" + b.TranslatedName + "_" + string.Join('_', b.Material.RenderParameters));
-                file.WriteLine(b.UvLayers + " # uv layers");
-                file.WriteLine(b.Material.RenderGroup.SupportedTextureTypes.Count + " # textures");
-                for (int i = 0; i < b.Material.RenderGroup.SupportedTextureTypes.Count; i++)
+                file.WriteLine(mesh.Material.RenderGroup!.Id + "_" + mesh.TranslatedName + "_" + string.Join('_', mesh.Material.RenderParameters));
+                file.WriteLine(mesh.UvLayers + " # uv layers");
+                file.WriteLine(mesh.Material.RenderGroup.SupportedTextureTypes.Count + " # textures");
+                foreach (var textureType in mesh.Material.RenderGroup.SupportedTextureTypes)
                 {
-                    if (b.Material.Textures.Count > i && !string.IsNullOrEmpty(b.Material.Textures[i].TranslatedName))
+                    if (mesh.Material.ActiveTextures.TryGetValue(textureType, out var texture))
                     {
-                        file.WriteLine(b.Material.Textures[i].TranslatedName);
-                        file.WriteLine(b.Material.Textures[i].UvLayer + " # uv layer index");
+                        file.WriteLine(texture.TranslatedName);
+                        file.WriteLine(texture.UvLayer + " # uv layer index");
                     }
                     else
                     {
-                        file.WriteLine("missing.png");
+                        file.WriteLine($"{mesh.TranslatedName}-{textureType}.png");
                         file.WriteLine("0 # uv layer index");
                     }
                 }
-                file.WriteLine(b.Vertices.Count + " # vertices");
-                b.Vertices.ForEach(v =>
+                file.WriteLine(mesh.Vertices.Count + " # vertices");
+                mesh.Vertices.ForEach(v =>
                 {
                     file.WriteLine(string.Join(' ', v.Position));
                     file.WriteLine(string.Join(' ', v.Normal));
-                    file.WriteLine(v.Color.R + " " + v.Color.G + " " + v.Color.B + " " + v.Color.A);
-                    file.WriteLine(string.Join(' ', v.UV));
-                    if (b.UvLayers == 2) file.WriteLine(string.Join(' ', v.UV2 ?? new double[2] { 0, 0 }));
+                    file.WriteLine($"{v.Color.R} {v.Color.G} {v.Color.B} {v.Color.A}");
+                    file.WriteLine(string.Join(' ', v.Uv));
+                    if (mesh.UvLayers == 2) file.WriteLine(string.Join(' ', v.Uv2 ?? new double[] { 0, 0 }));
                     file.WriteLine(string.Join(' ', v.Bones.Select(b => Bones.Where(b => b.FromMeshAscii).ToList().IndexOf(b.Bone))));
                     file.WriteLine(string.Join(' ', v.Bones.Select(b => b.Weight)));
                 });
-                file.WriteLine(b.Faces.Count + " # faces");
-                b.Faces.ForEach(f =>
-                {
-                    file.WriteLine(string.Join(' ', f.Vertices));
-                });
+                file.WriteLine(mesh.Faces.Count + " # faces");
+                mesh.Faces.ForEach(f => file.WriteLine(string.Join(' ', f.Vertices)));
                 increaseProgress();
             });
             return true;
