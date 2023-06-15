@@ -18,7 +18,8 @@ public static class MaterialManager
         var newMat = new Material
         {
             Textures = rg.SupportedTextureTypes.Zip(textures).ToDictionary(x => x.First, x => x.Second),
-            RenderParameters = parameters
+            RenderParameters = parameters,
+            AlphaEnabled = rg.Alpha,
         };
         Materials.Add(newMat);
         return newMat;

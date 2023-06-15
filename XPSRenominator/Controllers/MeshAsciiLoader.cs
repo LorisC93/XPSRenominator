@@ -164,11 +164,11 @@ namespace XPSRenominator.Controllers
                 {
                     mesh.Vertices.Add(new Vertex
                     {
-                        Position = originalLines[pointer++].ExtractDoubleArray(),
-                        Normal = originalLines[pointer++].ExtractDoubleArray(),
-                        Color = originalLines[pointer++].ExtractByteArray().ToColor(),
-                        Uv = originalLines[pointer++].ExtractDoubleArray(),
-                        Uv2 = mesh.UvLayers == 2 ? originalLines[pointer++].ExtractDoubleArray() : null,
+                        Position = originalLines[pointer++].RemoveComment().ExtractDoubleArray(),
+                        Normal = originalLines[pointer++].RemoveComment().ExtractDoubleArray(),
+                        Color = originalLines[pointer++].RemoveComment().ExtractByteArray().ToColor(),
+                        Uv = originalLines[pointer++].RemoveComment().ExtractDoubleArray(),
+                        Uv2 = mesh.UvLayers == 2 ? originalLines[pointer++].RemoveComment().ExtractDoubleArray() : null,
                         Bones = Utils.CreateVertexBones(originalLines[pointer++].ExtractIntArray(), originalLines[pointer++].ExtractDoubleArray(), bonesToUse)
                     });
                 }
