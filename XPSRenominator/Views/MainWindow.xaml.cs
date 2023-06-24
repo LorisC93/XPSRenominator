@@ -418,6 +418,28 @@ public partial class MainWindow : Window
         _loader.MakeRoot(bone);
         RenderBoneTree();
     }
+    private void AppendCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = BoneTree.SelectedItems.Count == 1;
+    }
+    private void AppendCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (BoneTree.SelectedItems.First().Tag is not Bone bone) return;
+
+        OpenFileDialog ofd = new()
+        {
+            CheckFileExists = true,
+            Title = "Select the .mesh.ascii file to edit",
+            Filter = "XPS .mesh.ascii|*.mesh.ascii",
+            Multiselect = false
+        };
+        if (ofd.ShowDialog() != true) return;
+        Saving.Visibility = Visibility.Visible;
+        Progress.Visibility = Visibility.Hidden;
+
+        if(ofd.FileName.EndsWith(".mesh.ascii"))
+            LoadMeshAsciiFile(ofd.FileName, bone);
+    }
 
     private void CloneMeshCommand_Executed(object sender, Mesh mesh)
     {
@@ -435,7 +457,7 @@ public partial class MainWindow : Window
         BoneTreeScroll.ScrollToVerticalOffset(BoneTreeScroll.VerticalOffset - e.Delta / 3);
     }
 
-    private void LoadMeshAsciiFile(string fileName)
+    private void LoadMeshAsciiFile(string fileName, Bone? appendTo = null)
     {
         _originalMeshAsciiName ??= string.Join("",fileName.SkipLast(".mesh.ascii".Length));
         _originalPoseName = null;
@@ -443,7 +465,7 @@ public partial class MainWindow : Window
         SaveBoneDictButton.Visibility = Visibility.Visible;
         UnloadAllButton.Visibility = Visibility.Visible;
 
-        _loader.LoadAsciiFile(fileName);
+        _loader.LoadAsciiFile(fileName, appendTo);
 
         Refresh();
 
@@ -473,7 +495,7 @@ public partial class MainWindow : Window
         OpenFileDialog ofd = new()
         {
             CheckFileExists = true,
-            Title = "Select the .mesh.ascii file to edit",
+            Title = "Select the .mesh.ascii file or .pose to edit",
             Filter = "XPS .mesh.ascii|*.mesh.ascii|XPS .pose|*.pose",
             Multiselect = false
         };

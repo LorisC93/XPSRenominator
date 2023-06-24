@@ -12,12 +12,12 @@ namespace XPSRenominator.Controllers
         public List<Bone> Bones { get; private set; } = new();
         public List<Mesh> Meshes { get; private set; } = new();
 
-        public void LoadAsciiFile(string fileName)
+        public void LoadAsciiFile(string fileName, Bone? appendTo = null)
         {
             var originalLines = File.ReadLines(fileName).ToList();
-            var mergingBones = LoadBones(originalLines);
-            MergeBones(mergingBones);
-            Meshes.AddRange(LoadMeshes(originalLines, mergingBones));
+            var newFileBones = LoadBones(originalLines, appendTo);
+            MergeBones(newFileBones);
+            Meshes.AddRange(LoadMeshes(originalLines, newFileBones, appendTo));
         }
         public void LoadPoseFile(string fileName)
         {
@@ -25,49 +25,42 @@ namespace XPSRenominator.Controllers
             Meshes.Clear();
         }
 
-        private static List<Bone> LoadBones(IReadOnlyList<string> originalLines)
+        private static List<Bone> LoadBones(IReadOnlyList<string> originalLines, Bone? appendTo = null)
         {
             // bone number
             /* for each bone */
             //  bone name
             //  parent index
             //  position
+            
+            var bones = new List<Bone>();
+            var boneCount = int.Parse(originalLines[0].RemoveComment());
 
-            //Bones.Clear();
-            //bool merge = Bones.Count > 0;
-            List<Bone> mergingBones = new();
-
-            int boneCount = int.Parse(originalLines.First().Split('#').First());
-
-            Dictionary<Bone, int> parentIndexes = new();
-            for (int i = 1; i <= boneCount * 3; i += 3)
+            var parentIndexes = new Dictionary<Bone, int>();
+            for (var i = 1; i <= boneCount * 3; i += 3)
             {
-                string name = originalLines[i].Clean();
+                var name = originalLines[i].RemoveComment().Clean();
 
-                int parentIndex = int.Parse(originalLines[i + 1].Split('#').First());
-                Bone bone = new()
+                var parentIndex = int.Parse(originalLines[i + 1].RemoveComment());
+                var bone = new Bone
                 {
                     OriginalName = name,
                     TranslatedName = name,
-                    Position = originalLines[i + 2].ExtractDoubleArray(),
+                    Position = originalLines[i + 2].RemoveComment().ExtractDoubleArray(),
                     FromMeshAscii = true
                 };
+                if (appendTo != null) bone.Position = bone.Position.Zip(appendTo.Position).Select(n => n.First + n.Second).ToArray();
+
                 parentIndexes.Add(bone, parentIndex);
-                //if (merge)
-                //{
-                    mergingBones.Add(bone);
-                //    if (!Bones.Exists(b => b.TranslatedName == name))
-                //        Bones.Add(bone);
-                //}
-                //else
-                //    Bones.Add(bone);
+                bones.Add(bone);
             }
-            foreach (Bone bone in mergingBones)
+
+            foreach (var bone in bones)
             {
-                int parentIndex = parentIndexes[bone];
-                bone.Parent = parentIndex == -1 ? null : mergingBones[parentIndex];
+                var parentIndex = parentIndexes[bone];
+                bone.Parent = parentIndex == -1 ? appendTo : bones[parentIndex];
             }
-            return mergingBones;
+            return bones;
         }
         private void MergeBones(IList<Bone> list2) 
         {
@@ -111,7 +104,7 @@ namespace XPSRenominator.Controllers
             }).ToList();
         }
 
-        private static IEnumerable<Mesh> LoadMeshes(IReadOnlyList<string> originalLines, List<Bone> bonesToUse)
+        private IEnumerable<Mesh> LoadMeshes(IReadOnlyList<string> originalLines, List<Bone> bonesToUse, Bone? appendTo = null)
         {
             // mesh number
             /* for each mesh */
@@ -134,21 +127,20 @@ namespace XPSRenominator.Controllers
             /***** for each face *****/
             //      3 numbers
 
-            //Meshes.Clear();
-            //MaterialManager.Materials.Clear();
-
-            var mergingMeshes = new List<Mesh>();
-
+            var meshes = new List<Mesh>();
             int pointer = 1 + bonesToUse.Count * 3;
-
             int meshCount = int.Parse(originalLines.ElementAt(pointer).RemoveComment());
             pointer++;
             for (int i = 0; i < meshCount; i++)
             {
                 Mesh mesh = new();
                 (int renderGroup, string name, float[] parameters) = SplitFirstMeshLine(originalLines[pointer++]);
-                mesh.OriginalName = name;
-                mesh.TranslatedName = name;
+                var uniqueName = name;
+                int n = 1;
+                while (Meshes.Any(m => m.TranslatedName == uniqueName) || meshes.Any(m => m.TranslatedName == uniqueName)) uniqueName = $"{name}-{n++}";
+
+                mesh.OriginalName = uniqueName;
+                mesh.TranslatedName = uniqueName;
                 mesh.UvLayers = int.Parse(originalLines[pointer++].RemoveComment());
                 var textureCount = int.Parse(originalLines[pointer++].RemoveComment());
                 var textures = new List<Texture>();
@@ -162,23 +154,26 @@ namespace XPSRenominator.Controllers
                 int verticesCount = int.Parse(originalLines[pointer++].Split('#').First());
                 for (int j = 0; j < verticesCount; j++)
                 {
-                    mesh.Vertices.Add(new Vertex
+                    var hasUv = originalLines[pointer + 3].ExtractDoubleArray().Length == 2;
+                    var vertex = new Vertex
                     {
-                        Position = originalLines[pointer++].RemoveComment().ExtractDoubleArray(),
-                        Normal = originalLines[pointer++].RemoveComment().ExtractDoubleArray(),
-                        Color = originalLines[pointer++].RemoveComment().ExtractByteArray().ToColor(),
-                        Uv = originalLines[pointer++].RemoveComment().ExtractDoubleArray(),
-                        Uv2 = mesh.UvLayers == 2 ? originalLines[pointer++].RemoveComment().ExtractDoubleArray() : null,
+                        Position = originalLines[pointer++].ExtractDoubleArray(),
+                        Normal = originalLines[pointer++].ExtractDoubleArray(),
+                        Color = originalLines[pointer++].ExtractByteArray().ToColor(),
+                        Uv = hasUv ? originalLines[pointer++].ExtractDoubleArray() : new []{ 0.0, 0.0 },
+                        Uv2 = mesh.UvLayers == 2 ? originalLines[pointer++].ExtractDoubleArray() : null,
                         Bones = Utils.CreateVertexBones(originalLines[pointer++].ExtractIntArray(), originalLines[pointer++].ExtractDoubleArray(), bonesToUse)
-                    });
+                    };
+                    if (appendTo != null) vertex.Position = vertex.Position.Zip(appendTo.Position).Select(n => n.First + n.Second).ToArray();
+                    mesh.Vertices.Add(vertex);
                 }
                 int faceCount = int.Parse(originalLines[pointer++].RemoveComment());
                 for (int j = 0; j < faceCount; j++)
                     mesh.Faces.Add(new Face { Vertices = originalLines[pointer++].ExtractIntArray() });
 
-                mergingMeshes.Add(mesh);
+                meshes.Add(mesh);
             }
-            return mergingMeshes;
+            return meshes;
         }
 
         private static (int, string, float[]) SplitFirstMeshLine(string line)
@@ -238,7 +233,12 @@ namespace XPSRenominator.Controllers
         }
 
         public void CloneMesh(Mesh mesh) => Meshes.Add((Mesh)mesh.Clone());
-        public void DeleteMesh(Mesh mesh) => Meshes.Remove(mesh);
+        public void DeleteMesh(Mesh mesh)
+        {
+            Meshes.Remove(mesh);
+            if (Meshes.All(m => m.Material != mesh.Material))
+                MaterialManager.Materials.Remove(mesh.Material);
+        }
 
         public void LoadBoneFile(string fileName, bool keepAll = true)
         {

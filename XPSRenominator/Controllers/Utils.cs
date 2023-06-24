@@ -38,9 +38,9 @@ namespace XPSRenominator.Controllers
             return indexes.Zip(weights).Select(couple => new VertexBone{ Bone = bones.ElementAt(couple.First), Weight = couple.Second }).ToList();
         }
 
-        public static int[] ExtractIntArray(this string s) => s.Trim().Split(' ').Select(int.Parse).ToArray();
-        public static byte[] ExtractByteArray(this string s) => s.Trim().Split(' ').Select(byte.Parse).ToArray();
-        public static double[] ExtractDoubleArray(this string s) => s.Trim().Split(' ').Select(double.Parse).ToArray();
+        public static int[] ExtractIntArray(this string s) => s.RemoveComment().Split(' ').Select(int.Parse).ToArray();
+        public static byte[] ExtractByteArray(this string s) => s.RemoveComment().Split(' ').Select(byte.Parse).ToArray();
+        public static double[] ExtractDoubleArray(this string s) => s.RemoveComment().Split(' ').Select(double.Parse).ToArray();
 
         public static string RemoveComment(this string line) => line.Split('#').First().Trim();
     }

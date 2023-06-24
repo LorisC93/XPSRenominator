@@ -160,6 +160,7 @@
                                         <CommandBinding Command="Paste" CanExecute="PasteBoneCommand_CanExecute" Executed="PasteBoneCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="New" CanExecute="NewBoneCommand_CanExecute" Executed="NewBoneCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="Replace" CanExecute="MakeRootBoneCommand_CanExecute" Executed="MakeRootBoneCommand_Executed"></CommandBinding>
+                                        <CommandBinding Command="Open" CanExecute="AppendCommand_CanExecute" Executed="AppendCommand_Executed"></CommandBinding>
                                     </controls:MultiSelectTreeView.CommandBindings>
                                     <controls:MultiSelectTreeView.ContextMenu>
                                         <ContextMenu>
@@ -168,6 +169,8 @@
                                             <Separator></Separator>
                                             <MenuItem Header="Make Root" Command="Replace"></MenuItem>
                                             <MenuItem Header="Add Bone" Command="New"></MenuItem>
+                                            <Separator></Separator>
+                                            <MenuItem Header="Append" Command="Open"></MenuItem>
                                         </ContextMenu>
                                     </controls:MultiSelectTreeView.ContextMenu>
                                 </controls:MultiSelectTreeView>
