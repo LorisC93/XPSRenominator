@@ -227,7 +227,7 @@ namespace XPSRenominator.Controllers
 
             Bones.Remove(bone);
 
-            Bones.Where(b => b.Parent == null).ToList().ForEach(b => b.Parent = bone);
+            Bones.Where(b => b.Parent == null && b.FromMeshAscii).ToList().ForEach(b => b.Parent = bone);
 
             Bones.Insert(0, bone);
         }
@@ -270,24 +270,30 @@ namespace XPSRenominator.Controllers
             });
         }
 
-        private List<Bone> GetBoneConflicts(bool onlyFromMesh = true) => Bones
-            .Where(b => !onlyFromMesh || b.FromMeshAscii)
+        private List<Bone> GetBoneConflicts(IEnumerable<Bone>? bones = null) => (bones ?? Bones)
+            .Where(b => b.FromMeshAscii)
             .GroupBy(b => b.TranslatedName)
             .Where(g => g.Count() > 1)
             .SelectMany(g => g)
             .Distinct()
             .ToList();
 
-        private List<Mesh> GetMeshConflicts() => Meshes
+        private List<Mesh> GetMeshConflicts(IEnumerable<Mesh>? meshes = null) => (meshes ?? Meshes)
             .GroupBy(b => b.TranslatedName)
             .Where(g => g.Count() > 1)
             .SelectMany(g => g)
             .Distinct()
             .ToList();
+
+        public int GetNeededProgress(List<Mesh>? meshes = null)
+        {
+            return (meshes ?? Meshes).Count(m => !m.Exclude) + (meshes ?? Meshes).Where(m => !m.Exclude).SelectMany(mesh => mesh.UsedBones).Distinct().Count();
+        }
 
         public bool SaveAscii(string fileName, Action increaseProgress)
         {
-            if (GetBoneConflicts().Count > 0 || GetMeshConflicts().Count > 0 || Meshes.Any(m => m.Material.RenderGroup == null))
+            return ExportMeshes(Meshes.Where(m => !m.Exclude).ToList(), fileName, increaseProgress);
+            /*if (GetBoneConflicts().Count > 0 || GetMeshConflicts().Count > 0 || Meshes.Any(m => m.Material.RenderGroup == null))
             {
                 return false;
             }
@@ -329,6 +335,60 @@ namespace XPSRenominator.Controllers
                     file.WriteLine(string.Join(' ', v.Uv));
                     if (mesh.UvLayers == 2) file.WriteLine(string.Join(' ', v.Uv2 ?? new double[] { 0, 0 }));
                     file.WriteLine(string.Join(' ', v.Bones.Select(b => Bones.Where(b => b.FromMeshAscii).ToList().IndexOf(b.Bone))));
+                    file.WriteLine(string.Join(' ', v.Bones.Select(b => b.Weight)));
+                });
+                file.WriteLine(mesh.Faces.Count + " # faces");
+                mesh.Faces.ForEach(f => file.WriteLine(string.Join(' ', f.Vertices)));
+                increaseProgress();
+            });
+            return true;*/
+        }
+        public bool ExportMeshes(List<Mesh> meshes, string fileName, Action increaseProgress)
+        {
+            var usedBones = meshes.SelectMany(mesh => mesh.UsedBones).Distinct().ToList();
+
+            if (GetBoneConflicts(usedBones).Any() || GetMeshConflicts(meshes).Any() || meshes.Any(m => m.Material.RenderGroup == null))
+            {
+                return false;
+            }
+
+            using StreamWriter file = new(fileName, false);
+            file.WriteLine(usedBones.Count + " # bones");
+            usedBones.ForEach(bone =>
+            {
+                file.WriteLine(bone.TranslatedName);
+                file.WriteLine((bone.Parent == null ? "-1" : usedBones.IndexOf(bone.Parent).ToString()) + " # parent index");
+                file.WriteLine(string.Join(" ", bone.Position));
+                increaseProgress();
+            });
+            file.WriteLine(meshes.Count + " # meshes");
+            meshes.ForEach(mesh =>
+            {
+                file.WriteLine(mesh.Material.RenderGroup!.Id + "_" + mesh.TranslatedName + "_" + string.Join('_', mesh.Material.RenderParameters));
+                file.WriteLine(mesh.UvLayers + " # uv layers");
+                file.WriteLine(mesh.Material.RenderGroup.SupportedTextureTypes.Count + " # textures");
+                foreach (var textureType in mesh.Material.RenderGroup.SupportedTextureTypes)
+                {
+                    if (mesh.Material.ActiveTextures.TryGetValue(textureType, out var texture))
+                    {
+                        file.WriteLine(texture.TranslatedName);
+                        file.WriteLine(texture.UvLayer + " # uv layer index");
+                    }
+                    else
+                    {
+                        file.WriteLine($"{mesh.TranslatedName}-{textureType}.png");
+                        file.WriteLine("0 # uv layer index");
+                    }
+                }
+                file.WriteLine(mesh.Vertices.Count + " # vertices");
+                mesh.Vertices.ForEach(v =>
+                {
+                    file.WriteLine(string.Join(' ', v.Position));
+                    file.WriteLine(string.Join(' ', v.Normal));
+                    file.WriteLine($"{v.Color.R} {v.Color.G} {v.Color.B} {v.Color.A}");
+                    file.WriteLine(string.Join(' ', v.Uv));
+                    if (mesh.UvLayers == 2) file.WriteLine(string.Join(' ', v.Uv2 ?? new double[] { 0, 0 }));
+                    file.WriteLine(string.Join(' ', v.Bones.Select(b => usedBones.IndexOf(b.Bone))));
                     file.WriteLine(string.Join(' ', v.Bones.Select(b => b.Weight)));
                 });
                 file.WriteLine(mesh.Faces.Count + " # faces");

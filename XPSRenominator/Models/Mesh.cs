@@ -14,6 +14,13 @@ namespace XPSRenominator.Models
         public int UvLayers { get; set; } = 1;
         public List<Vertex> Vertices { get; set; } = new();
         public List<Face> Faces { get; set; } = new();
+        
+        public bool Exclude { get; set; } = false;
+
+        public IEnumerable<Bone> UsedBones
+        {
+            get { return Vertices.SelectMany(v => v.Bones).SelectMany(vb => vb.Bone.GetFullTree()).Distinct(); }
+        }
 
         public object Clone()
         {

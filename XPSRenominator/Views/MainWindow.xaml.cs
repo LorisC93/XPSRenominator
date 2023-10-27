@@ -232,14 +232,22 @@ public partial class MainWindow : Window
                     ContextMenu contextMenu = new();
                     MenuItem clone = new() { Header = "Clone" };
                     MenuItem delete = new() { Header = "Delete" };
+                    MenuItem exclude = new() { Header = mesh.Exclude ? "Include" : "Exclude" };
                     clone.Click += (sender, e) => CloneMeshCommand_Executed(sender, mesh);
                     delete.Click += (sender, e) => DeleteMeshCommand_Executed(sender, mesh);
+                    exclude.Click += (sender, e) => ExcludeMeshCommand_Executed(sender, mesh);
                     contextMenu.Items.Add(clone);
                     contextMenu.Items.Add(delete);
+                    contextMenu.Items.Add(exclude);
 
                     meshLine.Children.Add(new TextBlock
                     {
-                        Text = $"[{mesh.OriginalName}]", FontWeight = FontWeights.Bold, Margin = new Thickness(2, 0, 2, 0), Tag = mesh, ContextMenu = contextMenu
+                        Text = $"[{mesh.OriginalName}]",
+                        FontWeight = mesh.Exclude ? FontWeights.Regular : FontWeights.Bold,
+                        FontStyle = mesh.Exclude ? FontStyles.Italic : FontStyles.Normal,
+                        Margin = new Thickness(2, 0, 2, 0),
+                        Tag = mesh,
+                        ContextMenu = contextMenu
                     });
 
                     TextBox translationTextBox = new() { Text = mesh.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
@@ -452,6 +460,12 @@ public partial class MainWindow : Window
         RenderMaterials();
     }
 
+    private void ExcludeMeshCommand_Executed(object sender, Mesh mesh)
+    {
+        mesh.Exclude = !mesh.Exclude;
+        RenderMaterials();
+    }
+
     private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         BoneTreeScroll.ScrollToVerticalOffset(BoneTreeScroll.VerticalOffset - e.Delta / 3);
@@ -557,6 +571,7 @@ public partial class MainWindow : Window
 
     private void SaveMeshFileDialog(object sender, RoutedEventArgs e)
     {
+
         SavingMessage.Content = "Saving, please wait.";
 
         SaveFileDialog sfd = new()
@@ -568,7 +583,7 @@ public partial class MainWindow : Window
             FileName = (_originalMeshAsciiName ?? _originalPoseName ?? "generic_item") + "_renamed"
         };
         if (sfd.ShowDialog() != true) return;
-        Progress.Maximum = _loader.Bones.Count(b => b.FromMeshAscii) + _loader.Meshes.Count;
+        Progress.Maximum = _loader.GetNeededProgress();
         Progress.Value = 0;
         Saving.Visibility = Visibility.Visible;
 
@@ -577,7 +592,8 @@ public partial class MainWindow : Window
             if (sfd.FileName.EndsWith(".mesh.ascii"))
             {
                 if (_loader.SaveAscii(sfd.FileName, IncreaseProgress)) return;
-                MessageBox.Show("conflicting bone and/or mesh names found, or invalid Materials, solve them before saving", "Conflict found", MessageBoxButton.OK,
+                MessageBox.Show("conflicting bone and/or mesh names found, or invalid Materials, solve them before saving", "Conflict found",
+                    MessageBoxButton.OK,
                     MessageBoxImage.Error, MessageBoxResult.OK);
                 Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
             }
