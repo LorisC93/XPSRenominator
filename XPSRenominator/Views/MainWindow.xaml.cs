@@ -154,6 +154,9 @@ public partial class MainWindow : Window
                 //TextBlock meshRenderGroupTextBlock = new() { Text = material.RenderGroup?.ToString(), Margin = new Thickness(0, 0, 5, 0) };
                 // meshRenderGroupTextBlock.Bind(TextBlock.TextProperty, material, "RenderGroup");
                 //groupBoxHeader.Children.Add(meshRenderGroupTextBlock);
+                
+                TextBlock materialName = new() { Text = material.Textures[0].TranslatedName, Margin = new Thickness(5, 0, 2, 0) };
+                materialName.Bind(TextBlock.TextProperty, material.Textures[0], "TranslatedName");
 
                 TextBox meshRenderParameter1 = new() { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25 };
                 TextBox meshRenderParameter2 = new() { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25 };
@@ -161,6 +164,7 @@ public partial class MainWindow : Window
                 meshRenderParameter1.Bind(TextBox.TextProperty, material, "RenderParameters[0]");
                 meshRenderParameter2.Bind(TextBox.TextProperty, material, "RenderParameters[1]");
                 meshRenderParameter3.Bind(TextBox.TextProperty, material, "RenderParameters[2]");
+                groupBoxHeader.Children.Add(materialName);
                 groupBoxHeader.Children.Add(meshRenderParameter1);
                 groupBoxHeader.Children.Add(meshRenderParameter2);
                 groupBoxHeader.Children.Add(meshRenderParameter3);
@@ -169,18 +173,23 @@ public partial class MainWindow : Window
                 alphaEnabledCheckBox.Bind(ToggleButton.IsCheckedProperty, material, "AlphaEnabled");
                 groupBoxHeader.Children.Add(alphaEnabledCheckBox);
 
-                GroupBox meshNameGroupBox = new() { Header = groupBoxHeader, Tag = material, Padding = new Thickness(0, 2, 0, 2) };
-                meshNameGroupBox.DragEnter += DragEnterHandler;
-                meshNameGroupBox.DragLeave += DragLeaveHandler;
-                meshNameGroupBox.Drop += MaterialGroup_Drop;
-                MaterialsPanel.Children.Add(meshNameGroupBox);
+                Expander materialGroup = new() { Header = groupBoxHeader, Tag = material, Padding = new Thickness(0, 2, 0, 2), IsExpanded = true};
+                materialGroup.DragEnter += DragEnterHandler;
+                materialGroup.DragLeave += DragLeaveHandler;
+                materialGroup.Drop += MaterialGroup_Drop;
+                MaterialsPanel.Children.Add(materialGroup);
+                
+                meshRenderParameter1.Bind(IsEnabledProperty, materialGroup, "IsExpanded");
+                meshRenderParameter2.Bind(IsEnabledProperty, materialGroup, "IsExpanded");
+                meshRenderParameter3.Bind(IsEnabledProperty, materialGroup, "IsExpanded");
+                alphaEnabledCheckBox.Bind(IsEnabledProperty, materialGroup, "IsExpanded");
 
                 Grid texturesGrid = new();
                 texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(1, GridUnitType.Auto) });
                 texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(1, GridUnitType.Star) });
                 texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(1, GridUnitType.Auto) });
                 texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(2, GridUnitType.Star) });
-                meshNameGroupBox.Content = texturesGrid;
+                materialGroup.Content = texturesGrid;
 
                 foreach (var textureType in RenderGroupUtils.TextureTypes)
                 {
@@ -294,7 +303,7 @@ public partial class MainWindow : Window
 
     private void MaterialGroup_Drop(object sender, DragEventArgs e)
     {
-        var target = sender as GroupBox;
+        var target = sender as ContentControl;
         var source = e.Data.GetData(typeof(Mesh)) as Mesh;
         if (target?.Tag is Material material && source is not null && source.Material != material)
         {
