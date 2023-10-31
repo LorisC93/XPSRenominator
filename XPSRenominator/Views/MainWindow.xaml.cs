@@ -141,6 +141,16 @@ public partial class MainWindow : Window
         });
     }
 
+
+    private void UpdateMaterialRender(Material material)
+    {
+        var group = MaterialsPanel.Children.OfType<Expander>().Single(e => e.Tag == material);
+        if (!MaterialManager.Materials.Contains(material))
+            MaterialsPanel.Children.Remove(group);
+        else
+            RenderMaterial(material, group);
+    }
+
     private void RenderMaterials()
     {
         MaterialsPanel.Dispatcher.Invoke(() =>
@@ -149,134 +159,143 @@ public partial class MainWindow : Window
 
             foreach (Material material in MaterialManager.Materials)
             {
-                StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal, AllowDrop = true };
-
-                //TextBlock meshRenderGroupTextBlock = new() { Text = material.RenderGroup?.ToString(), Margin = new Thickness(0, 0, 5, 0) };
-                // meshRenderGroupTextBlock.Bind(TextBlock.TextProperty, material, "RenderGroup");
-                //groupBoxHeader.Children.Add(meshRenderGroupTextBlock);
-                
-                TextBlock materialName = new() { Text = material.Textures[0].TranslatedName, Margin = new Thickness(5, 0, 2, 0) };
-                materialName.Bind(TextBlock.TextProperty, material.Textures[0], "TranslatedName");
-
-                TextBox meshRenderParameter1 = new() { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25 };
-                TextBox meshRenderParameter2 = new() { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25 };
-                TextBox meshRenderParameter3 = new() { Text = material.RenderParameters[2].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 0, 0), MinWidth = 25 };
-                meshRenderParameter1.Bind(TextBox.TextProperty, material, "RenderParameters[0]");
-                meshRenderParameter2.Bind(TextBox.TextProperty, material, "RenderParameters[1]");
-                meshRenderParameter3.Bind(TextBox.TextProperty, material, "RenderParameters[2]");
-                groupBoxHeader.Children.Add(materialName);
-                groupBoxHeader.Children.Add(meshRenderParameter1);
-                groupBoxHeader.Children.Add(meshRenderParameter2);
-                groupBoxHeader.Children.Add(meshRenderParameter3);
-
-                CheckBox alphaEnabledCheckBox = new() { Content = "Alpha Enabled", IsChecked = material.AlphaEnabled, Margin = new Thickness(5, 0, 0, 0) };
-                alphaEnabledCheckBox.Bind(ToggleButton.IsCheckedProperty, material, "AlphaEnabled");
-                groupBoxHeader.Children.Add(alphaEnabledCheckBox);
-
-                Expander materialGroup = new() { Header = groupBoxHeader, Tag = material, Padding = new Thickness(0, 2, 0, 2), IsExpanded = true};
-                materialGroup.DragEnter += DragEnterHandler;
-                materialGroup.DragLeave += DragLeaveHandler;
-                materialGroup.Drop += MaterialGroup_Drop;
+                Expander materialGroup = new() { IsExpanded = true };
                 MaterialsPanel.Children.Add(materialGroup);
-                
-                meshRenderParameter1.Bind(IsEnabledProperty, materialGroup, "IsExpanded");
-                meshRenderParameter2.Bind(IsEnabledProperty, materialGroup, "IsExpanded");
-                meshRenderParameter3.Bind(IsEnabledProperty, materialGroup, "IsExpanded");
-                alphaEnabledCheckBox.Bind(IsEnabledProperty, materialGroup, "IsExpanded");
 
-                Grid texturesGrid = new();
-                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(1, GridUnitType.Auto) });
-                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(1, GridUnitType.Star) });
-                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(1, GridUnitType.Auto) });
-                texturesGrid.ColumnDefinitions.Add(new ColumnDefinition{ Width = new GridLength(2, GridUnitType.Star) });
-                materialGroup.Content = texturesGrid;
+                RenderMaterial(material, materialGroup);
+            }
+        });
+    }
 
-                foreach (var textureType in RenderGroupUtils.TextureTypes)
-                {
-                    material.Textures.TryAdd(textureType, new Texture());
+    private void RenderMaterial(Material material, Expander group)
+    {
+        StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal, AllowDrop = true };
 
-                    material.Textures.TryGetValue(textureType, out var texture);
+        TextBlock materialName = new() { Text = material.Textures[0].TranslatedName, Margin = new Thickness(5, 0, 2, 0) };
+        materialName.Bind(TextBlock.TextProperty, material.Textures[0], "TranslatedName");
 
-                    texturesGrid.RowDefinitions.Add(new RowDefinition() );
+        TextBox meshRenderParameter1 = new()
+            { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25 };
+        TextBox meshRenderParameter2 = new()
+            { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25 };
+        TextBox meshRenderParameter3 = new()
+            { Text = material.RenderParameters[2].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 0, 0), MinWidth = 25 };
+        meshRenderParameter1.Bind(TextBox.TextProperty, material, "RenderParameters[0]");
+        meshRenderParameter2.Bind(TextBox.TextProperty, material, "RenderParameters[1]");
+        meshRenderParameter3.Bind(TextBox.TextProperty, material, "RenderParameters[2]");
+        groupBoxHeader.Children.Add(materialName);
+        groupBoxHeader.Children.Add(meshRenderParameter1);
+        groupBoxHeader.Children.Add(meshRenderParameter2);
+        groupBoxHeader.Children.Add(meshRenderParameter3);
 
-                    TextBlock textureTypeTextBlock = new() { Text = textureType.Code(), Margin = new Thickness(0, 0, 5, 0) };
-                    Grid.SetRow(textureTypeTextBlock, texturesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(textureTypeTextBlock, 0);
-                    textureTypeTextBlock.Foreground = Brushes.Gray;
-                    textureTypeTextBlock.VerticalAlignment = VerticalAlignment.Center;
-                    texturesGrid.Children.Add(textureTypeTextBlock);
+        CheckBox alphaEnabledCheckBox = new() { Content = "Alpha Enabled", IsChecked = material.AlphaEnabled, Margin = new Thickness(5, 0, 0, 0) };
+        alphaEnabledCheckBox.Bind(ToggleButton.IsCheckedProperty, material, "AlphaEnabled");
+        groupBoxHeader.Children.Add(alphaEnabledCheckBox);
 
-                    TextBox translationTextBox = new() { Text = texture!.TranslatedName };
-                    Grid.SetRow(translationTextBox, texturesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(translationTextBox, 1);
-                    translationTextBox.Bind(TextBox.TextProperty, texture, "TranslatedName");
-                    translationTextBox.VerticalAlignment = VerticalAlignment.Center;
-                    texturesGrid.Children.Add(translationTextBox);
+        group.Header = groupBoxHeader;
+        group.Tag = material;
+        group.Padding = new Thickness(0, 2, 0, 2);
+        group.DragEnter += DragEnterHandler;
+        group.DragLeave += DragLeaveHandler;
+        group.Drop += MaterialGroup_Drop;
 
-                    TextBlock translatingTextBlock = new() { Text = texture.TranslatingName };
-                    Grid.SetRow(translatingTextBlock, texturesGrid.RowDefinitions.Count - 1);
-                    Grid.SetColumn(translatingTextBlock, 2);
-                    translatingTextBlock.Foreground = Brushes.Red;
-                    translatingTextBlock.VerticalAlignment = VerticalAlignment.Center;
-                    translatingTextBlock.Bind(TextBlock.TextProperty, texture, "TranslatingName");
-                    texturesGrid.Children.Add(translatingTextBlock);
-                }
+        meshRenderParameter1.Bind(IsEnabledProperty, group, "IsExpanded");
+        meshRenderParameter2.Bind(IsEnabledProperty, group, "IsExpanded");
+        meshRenderParameter3.Bind(IsEnabledProperty, group, "IsExpanded");
+        alphaEnabledCheckBox.Bind(IsEnabledProperty, group, "IsExpanded");
 
-                StackPanel meshesPanel = new() { Orientation = Orientation.Vertical, VerticalAlignment = VerticalAlignment.Center};
-                Grid.SetRowSpan(meshesPanel, texturesGrid.RowDefinitions.Count);
-                Grid.SetColumn(meshesPanel, 3);
+        Grid texturesGrid = new();
+        texturesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+        texturesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        texturesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+        texturesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
+        group.Content = texturesGrid;
 
-                foreach (Mesh mesh in _loader.Meshes.Where(m => m.Material == material))
-                {
-                    StackPanel meshLine = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        foreach (var textureType in RenderGroupUtils.TextureTypes)
+        {
+            material.Textures.TryAdd(textureType, new Texture());
 
-                    PortableColorPicker colorPicker = new() { Width = 15, Height = 15, Margin = new Thickness(2, 0, 2, 0), ShowAlpha = false, SelectedColor = mesh.Vertices.First().Color };
-                    colorPicker.ColorChanged += (sender, e) => { mesh.Vertices.ForEach(v => v.Color = colorPicker.SelectedColor); };
-                    meshLine.Children.Add(colorPicker);
+            material.Textures.TryGetValue(textureType, out var texture);
 
-                    /*TextBlock meshTextBlock = new() { Text = mesh.TranslatedName, Tag = mesh };
+            texturesGrid.RowDefinitions.Add(new RowDefinition());
+
+            TextBlock textureTypeTextBlock = new() { Text = textureType.Code(), Margin = new Thickness(0, 0, 5, 0) };
+            Grid.SetRow(textureTypeTextBlock, texturesGrid.RowDefinitions.Count - 1);
+            Grid.SetColumn(textureTypeTextBlock, 0);
+            textureTypeTextBlock.Foreground = Brushes.Gray;
+            textureTypeTextBlock.VerticalAlignment = VerticalAlignment.Center;
+            texturesGrid.Children.Add(textureTypeTextBlock);
+
+            TextBox translationTextBox = new() { Text = texture!.TranslatedName };
+            Grid.SetRow(translationTextBox, texturesGrid.RowDefinitions.Count - 1);
+            Grid.SetColumn(translationTextBox, 1);
+            translationTextBox.Bind(TextBox.TextProperty, texture, "TranslatedName");
+            translationTextBox.VerticalAlignment = VerticalAlignment.Center;
+            texturesGrid.Children.Add(translationTextBox);
+
+            TextBlock translatingTextBlock = new() { Text = texture.TranslatingName };
+            Grid.SetRow(translatingTextBlock, texturesGrid.RowDefinitions.Count - 1);
+            Grid.SetColumn(translatingTextBlock, 2);
+            translatingTextBlock.Foreground = Brushes.Red;
+            translatingTextBlock.VerticalAlignment = VerticalAlignment.Center;
+            translatingTextBlock.Bind(TextBlock.TextProperty, texture, "TranslatingName");
+            texturesGrid.Children.Add(translatingTextBlock);
+        }
+
+        StackPanel meshesPanel = new() { Orientation = Orientation.Vertical, VerticalAlignment = VerticalAlignment.Center };
+        Grid.SetRowSpan(meshesPanel, texturesGrid.RowDefinitions.Count);
+        Grid.SetColumn(meshesPanel, 3);
+
+        foreach (Mesh mesh in _loader.Meshes.Where(m => m.Material == material))
+        {
+            StackPanel meshLine = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+
+            PortableColorPicker colorPicker = new()
+                { Width = 15, Height = 15, Margin = new Thickness(2, 0, 2, 0), ShowAlpha = false, SelectedColor = mesh.Vertices.First().Color };
+            colorPicker.ColorChanged += (sender, e) => { mesh.Vertices.ForEach(v => v.Color = colorPicker.SelectedColor); };
+            meshLine.Children.Add(colorPicker);
+
+            /*TextBlock meshTextBlock = new() { Text = mesh.TranslatedName, Tag = mesh };
                     meshTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
                     meshLine.Children.Add(meshTextBlock);*/
 
-                    ContextMenu contextMenu = new();
-                    MenuItem clone = new() { Header = "Clone" };
-                    MenuItem delete = new() { Header = "Delete" };
-                    MenuItem exclude = new() { Header = mesh.Exclude ? "Include" : "Exclude" };
-                    clone.Click += (sender, e) => CloneMeshCommand_Executed(sender, mesh);
-                    delete.Click += (sender, e) => DeleteMeshCommand_Executed(sender, mesh);
-                    exclude.Click += (sender, e) => ExcludeMeshCommand_Executed(sender, mesh);
-                    contextMenu.Items.Add(clone);
-                    contextMenu.Items.Add(delete);
-                    contextMenu.Items.Add(exclude);
+            ContextMenu contextMenu = new();
+            MenuItem clone = new() { Header = "Clone" };
+            MenuItem delete = new() { Header = "Delete" };
+            MenuItem exclude = new() { Header = mesh.Exclude ? "Include" : "Exclude" };
+            clone.Click += (sender, e) => CloneMeshCommand_Executed(sender, mesh);
+            delete.Click += (sender, e) => DeleteMeshCommand_Executed(sender, mesh);
+            exclude.Click += (sender, e) => ExcludeMeshCommand_Executed(sender, mesh);
+            contextMenu.Items.Add(clone);
+            contextMenu.Items.Add(delete);
+            contextMenu.Items.Add(exclude);
 
-                    meshLine.Children.Add(new TextBlock
-                    {
-                        Text = $"[{mesh.OriginalName}]",
-                        FontWeight = mesh.Exclude ? FontWeights.Regular : FontWeights.Bold,
-                        FontStyle = mesh.Exclude ? FontStyles.Italic : FontStyles.Normal,
-                        Margin = new Thickness(2, 0, 2, 0),
-                        Tag = mesh,
-                        ContextMenu = contextMenu
-                    });
+            meshLine.Children.Add(new TextBlock
+            {
+                Text = $"[{mesh.OriginalName}]",
+                FontWeight = mesh.Exclude ? FontWeights.Regular : FontWeights.Bold,
+                FontStyle = mesh.Exclude ? FontStyles.Italic : FontStyles.Normal,
+                Margin = new Thickness(2, 0, 2, 0),
+                Tag = mesh,
+                ContextMenu = contextMenu
+            });
 
-                    TextBox translationTextBox = new() { Text = mesh.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
-                    translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedName");
-                    meshLine.Children.Add(translationTextBox);
-                        
-                    TextBlock translatingTextBlock = new()
-                    {
-                        Text = mesh.TranslatingName,
-                        Foreground = Brushes.Red
-                    };
-                    translatingTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatingName");
-                    meshLine.Children.Add(translatingTextBlock);
+            TextBox translationTextBox = new() { Text = mesh.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
+            translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedName");
+            meshLine.Children.Add(translationTextBox);
 
-                    meshesPanel.Children.Add(meshLine);
-                }
+            TextBlock translatingTextBlock = new()
+            {
+                Text = mesh.TranslatingName,
+                Foreground = Brushes.Red
+            };
+            translatingTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatingName");
+            meshLine.Children.Add(translatingTextBlock);
 
-                texturesGrid.Children.Add(meshesPanel);
-            }
-        });
+            meshesPanel.Children.Add(meshLine);
+        }
+
+        texturesGrid.Children.Add(meshesPanel);
     }
 
 
@@ -310,11 +329,14 @@ public partial class MainWindow : Window
             if (_loader.Meshes.Count(m => m.Material == source.Material) == 1)
                 MaterialManager.Materials.Remove(source.Material);
 
+            var oldMaterial = source.Material;
             source.Material = material;
+            
+            UpdateMaterialRender(oldMaterial);
+            UpdateMaterialRender(material);
         }
         DragLeaveHandler(sender, e);
         e.Handled = true;
-        RenderMaterials();
     }
     private void MaterialPanel_Drop(object sender, DragEventArgs e)
     {
