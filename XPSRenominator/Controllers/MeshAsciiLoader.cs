@@ -135,7 +135,7 @@ namespace XPSRenominator.Controllers
             {
                 Mesh mesh = new();
                 (int renderGroup, string name, float[] parameters) = SplitFirstMeshLine(originalLines[pointer++]);
-                var uniqueName = name;
+                var uniqueName = name.Replace('_', '-');
                 int n = 1;
                 while (Meshes.Any(m => m.TranslatedName == uniqueName) || meshes.Any(m => m.TranslatedName == uniqueName)) uniqueName = $"{name}-{n++}";
 

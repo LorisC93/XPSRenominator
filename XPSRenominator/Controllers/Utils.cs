@@ -9,10 +9,10 @@ namespace XPSRenominator.Controllers
 {
     public static class Utils
     {
-        public static string Clean(this string name, bool allowed = false)
+        public static string Clean(this string name, bool underscoreAllowed = false)
         {
             var result = name.ToLower().Replace(':', ' ').Replace('|', ' ').Trim();
-            if (!allowed) result = result.Replace('_', ' ');
+            if (!underscoreAllowed) result = result.Replace('_', ' ');
             return result;
         }
 
