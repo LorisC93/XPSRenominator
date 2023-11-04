@@ -144,7 +144,7 @@ public partial class MainWindow : Window
 
     private void UpdateMaterialRender(Material material)
     {
-        var group = MaterialsPanel.Children.OfType<Expander>().Single(e => e.Tag == material);
+        var group = MaterialsPanel.Children.OfType<Expander>().SingleOrDefault(e => e.Tag == material);
         if (!MaterialManager.Materials.Contains(material))
             MaterialsPanel.Children.Remove(group);
         else
@@ -157,18 +157,18 @@ public partial class MainWindow : Window
         {
             MaterialsPanel.Children.Clear();
 
-            foreach (Material material in MaterialManager.Materials)
-            {
-                Expander materialGroup = new() { IsExpanded = true };
-                MaterialsPanel.Children.Add(materialGroup);
-
-                RenderMaterial(material, materialGroup);
-            }
+            MaterialManager.Materials.ForEach(m => RenderMaterial(m));
         });
     }
 
-    private void RenderMaterial(Material material, Expander group)
+    private void RenderMaterial(Material material, Expander? group = null)
     {
+        if (group == null)
+        {
+            group = new Expander { IsExpanded = true };
+            MaterialsPanel.Children.Add(group);
+        }
+
         StackPanel groupBoxHeader = new() { Orientation = Orientation.Horizontal, AllowDrop = true };
 
         TextBlock materialName = new() { Text = material.Textures[0].TranslatedName, Margin = new Thickness(5, 0, 2, 0) };
@@ -326,31 +326,35 @@ public partial class MainWindow : Window
         var source = e.Data.GetData(typeof(Mesh)) as Mesh;
         if (target?.Tag is Material material && source is not null && source.Material != material)
         {
-            if (_loader.Meshes.Count(m => m.Material == source.Material) == 1)
-                MaterialManager.Materials.Remove(source.Material);
-
-            var oldMaterial = source.Material;
-            source.Material = material;
-            
-            UpdateMaterialRender(oldMaterial);
-            UpdateMaterialRender(material);
+            ChangeMaterial(source, material);
         }
         DragLeaveHandler(sender, e);
         e.Handled = true;
     }
+
     private void MaterialPanel_Drop(object sender, DragEventArgs e)
     {
         if (e.Data.GetData(typeof(Mesh)) is Mesh mesh)
         {
-            if (_loader.Meshes.Count(m => m.Material == mesh.Material) == 1)
-                MaterialManager.Materials.Remove(mesh.Material);
-
-            mesh.Material = new Material();
-            MaterialManager.Materials.Add(mesh.Material);
+            ChangeMaterial(mesh, (Material)mesh.Material.Clone());
         }
+
         DragLeaveHandler(sender, e);
         e.Handled = true;
-        RenderMaterials();
+    }
+
+    private void ChangeMaterial(Mesh mesh, Material material)
+    {
+        if (!MaterialManager.Materials.Contains(material))
+            MaterialManager.Materials.Add(material);
+        if (_loader.Meshes.Count(m => m.Material == mesh.Material) == 1)
+            MaterialManager.Materials.Remove(mesh.Material);
+
+        var oldMaterial = mesh.Material;
+        mesh.Material = material;
+
+        UpdateMaterialRender(oldMaterial);
+        UpdateMaterialRender(material);
     }
 
     private void BoneTree_MouseMove(object sender, MouseEventArgs e)
@@ -683,10 +687,10 @@ public partial class MainWindow : Window
 
         Refresh();
     }
-        
+
     private async void Regex_Changed(object sender, EventArgs? e)
     {
-        if(sender is TextBox t && await UserKeepsTyping(t)) return;
+        if (sender is TextBox t && await UserKeepsTyping(t)) return;
 
         bool IsIncluded(Bone b)
         {
@@ -695,13 +699,19 @@ public partial class MainWindow : Window
                 return BoneTree.SelectedItems.Any(item => item.Tag == b) || (b.Parent != null && IsIncluded(b.Parent));
             return BoneTree.SelectedItems.Any(item => item.Tag == b);
         }
-            
+
         var renameIndexes = new Dictionary<string, int>();
-        _loader.Bones.ForEach(b => b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, !IsIncluded(b)));
+        var groupIndexes = new Dictionary<Translatable, int>();
+        _loader.Bones.ToList().ForEach(b =>
+            b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, groupIndexes, b2 => !IsIncluded((Bone)b2)));
         renameIndexes = new Dictionary<string, int>();
-        _loader.Meshes.ForEach(m => m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == false));
+        groupIndexes = new Dictionary<Translatable, int>();
+        _loader.Meshes.ForEach(m =>
+            m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, groupIndexes, _ => RenameMeshes.IsChecked == false));
         renameIndexes = new Dictionary<string, int>();
-        _loader.Meshes.SelectMany(m => m.Material.Textures.Values).ToList().ForEach(tex => tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, RenameMeshes.IsChecked == true));
+        groupIndexes = new Dictionary<Translatable, int>();
+        _loader.Meshes.SelectMany(m => m.Material.Textures.Values).ToList().ForEach(tex =>
+            tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, groupIndexes, _ => RenameMeshes.IsChecked == true));
     }
 
     private void ApplyRename(object sender, RoutedEventArgs e)

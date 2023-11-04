@@ -6,7 +6,7 @@
         xmlns:controls="clr-namespace:XPSRenominator.Controls"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator 3.4.3" Height="900" Width="850">
+        Title="XPS Renominator 3.4.4" Height="900" Width="850">
     <Window.Resources>
         <Style TargetType="Button">
             <Setter Property="Template">
@@ -119,8 +119,12 @@
                         <TextBox Name="RegexOriginal" Grid.Row="0" Grid.Column="1" TextChanged="Regex_Changed"/>
                         <TextBox Name="RegexResult"  Grid.Row="1" Grid.Column="1" TextChanged="Regex_Changed">
                             <TextBox.ToolTip>
-                                Use \d to insert an increasing number.
-                                Use \d\d or \d\d\d to use more padding.
+                                <TextBlock>
+                                    Use \d to insert an increasing number.&#x0a;<LineBreak /> 
+                                    Use \gi to insert the group index.<LineBreak /> 
+                                    Use \gd to insert the number inside the group.<LineBreak /> 
+                                    You can repeat all those special characters up to 3 times to use more padding.
+                                </TextBlock>
                             </TextBox.ToolTip>
                         </TextBox>
                         

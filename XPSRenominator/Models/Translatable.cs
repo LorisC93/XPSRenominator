@@ -34,11 +34,11 @@ namespace XPSRenominator.Models
         public string OriginalName { get; set; } = "";
 
 
-        public void ApplyRegex(string pattern, string replacement, Dictionary<string, int> renameIndexes, bool exclude = false)
+        public virtual void ApplyRegex(string pattern, string replacement, Dictionary<string, int> renameIndexes, Dictionary<Translatable, int> groupIndexes, Func<Translatable, bool> exclude)
         {
             TranslatingName = null;
 
-            if (exclude) return;
+            if (exclude(this)) return;
 
             try
             {
