@@ -487,18 +487,18 @@ public partial class MainWindow : Window
     private void CloneMeshCommand_Executed(object sender, Mesh mesh)
     {
         _loader.CloneMesh(mesh);
-        RenderMaterials();
+        UpdateMaterialRender(mesh.Material);
     }
     private void DeleteMeshCommand_Executed(object sender, Mesh mesh)
     {
         _loader.DeleteMesh(mesh);
-        RenderMaterials();
+        UpdateMaterialRender(mesh.Material);
     }
 
     private void ExcludeMeshCommand_Executed(object sender, Mesh mesh)
     {
         mesh.Exclude = !mesh.Exclude;
-        RenderMaterials();
+        UpdateMaterialRender(mesh.Material);
     }
 
     private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)

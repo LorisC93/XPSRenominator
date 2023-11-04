@@ -80,17 +80,27 @@ namespace XPSRenominator.Models
             return new Material
             {
                 RenderParameters = RenderParameters,
-                Textures = new Dictionary<TextureType, Texture>(Textures)
+                Textures = Textures.Select(pair => (Type: pair.Key, Texture: (Texture)pair.Value.Clone())).ToDictionary(pair => pair.Type, pair => pair.Texture)
             };
         }
     }
 
-    public class Texture : Translatable
+    public class Texture : Translatable, ICloneable
     {
         public int UvLayer { get; set; } = 0;
 
         public override bool Equals(object? obj) => obj is Texture t && TranslatedName == t.TranslatedName && UvLayer == t.UvLayer;
         public override int GetHashCode() => TranslatedName.GetHashCode();
+        
+        public object Clone()
+        {
+            return new Texture
+            {
+                OriginalName = OriginalName,
+                TranslatedName = TranslatedName,
+                UvLayer = UvLayer
+            };
+        }
     }
     public class Vertex: ICloneable
     {
