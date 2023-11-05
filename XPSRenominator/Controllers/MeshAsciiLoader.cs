@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using XPSRenominator.Models;
 
 namespace XPSRenominator.Controllers
@@ -419,6 +420,50 @@ namespace XPSRenominator.Controllers
                 file.WriteLine(line);
                 increaseProgress();
             });
+        }
+
+        public Dictionary<Bone, List<int>> FindBoneGroups(string pattern, Func<Bone, bool> isValid)
+        {
+            var indexes = new Dictionary<Bone, List<int>>();
+            try
+            {
+                var validBones = Bones.Where(bone => isValid(bone) && Regex.IsMatch(bone.TranslatedName, pattern)).ToList();
+                foreach (var bone in validBones)
+                {
+                    if (bone.Parent == null || !validBones.Contains(bone.Parent))
+                    {
+                        var index = new List<int> { indexes.Any() ? indexes.Values.Select(i => i.First()).Max() + 1 : 1 };
+                        if (validBones.Count(b => b.Parent == bone) == 1)
+                        {
+                            index.Add(1);
+                        }
+
+                        indexes.TryAdd(bone, index);
+                    }
+                    else if (bone.Parent != null && validBones.Exists(b => b != bone && b.Parent == bone.Parent))
+                    {
+                        var index = new List<int>(indexes[bone.Parent]) { validBones.Where(b => b.Parent == bone.Parent).ToList().IndexOf(bone) + 1 };
+                        if (validBones.Count(b => b.Parent == bone) == 1)
+                        {
+                            index.Add(1);
+                        }
+
+                        indexes.TryAdd(bone, index);
+                    }
+                    else if (bone.Parent != null && !validBones.Exists(b => b != bone && b.Parent == bone.Parent))
+                    {
+                        var index = new List<int>(indexes[bone.Parent]);
+                        index[^1]++;
+                        indexes.TryAdd(bone, index);
+                    }
+                }
+            }
+            catch
+            {
+                // ignored
+            }
+
+            return indexes;
         }
     }
 }

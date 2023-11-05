@@ -34,7 +34,7 @@ namespace XPSRenominator.Models
         public string OriginalName { get; set; } = "";
 
 
-        public virtual void ApplyRegex(string pattern, string replacement, Dictionary<string, int> renameIndexes, Dictionary<Translatable, int> groupIndexes, Func<Translatable, bool> exclude)
+        public virtual void ApplyRegex(string pattern, string replacement, Dictionary<string, int> renameIndexes, Func<Translatable, bool> exclude)
         {
             TranslatingName = null;
 
@@ -61,6 +61,11 @@ namespace XPSRenominator.Models
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+        public override string ToString()
+        {
+            return TranslatedName;
         }
     }
 }

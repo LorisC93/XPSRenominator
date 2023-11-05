@@ -123,6 +123,7 @@
                                     Use \d to insert an increasing number.&#x0a;<LineBreak /> 
                                     Use \gi to insert the group index.<LineBreak /> 
                                     Use \gd to insert the number inside the group.<LineBreak /> 
+                                    Use \g to insert both of the previous 2.<LineBreak /> 
                                     You can repeat all those special characters up to 3 times to use more padding.
                                 </TextBlock>
                             </TextBox.ToolTip>

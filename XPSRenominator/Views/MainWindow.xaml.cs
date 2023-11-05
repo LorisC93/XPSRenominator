@@ -711,17 +711,16 @@ public partial class MainWindow : Window
         }
 
         var renameIndexes = new Dictionary<string, int>();
-        var groupIndexes = new Dictionary<Translatable, int>();
+        var groupIndexes = _loader.FindBoneGroups(RegexOriginal.Text, IsIncluded);
+
         _loader.Bones.ToList().ForEach(b =>
-            b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, groupIndexes, b2 => !IsIncluded((Bone)b2)));
+            b.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, groupIndexes.GetValueOrDefault(b) ?? new List<int>(), b2 => !IsIncluded((Bone)b2)));
         renameIndexes = new Dictionary<string, int>();
-        groupIndexes = new Dictionary<Translatable, int>();
         _loader.Meshes.ForEach(m =>
-            m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, groupIndexes, _ => RenameMeshes.IsChecked == false));
+            m.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, _ => RenameMeshes.IsChecked == false));
         renameIndexes = new Dictionary<string, int>();
-        groupIndexes = new Dictionary<Translatable, int>();
         _loader.Meshes.SelectMany(m => m.Material.Textures.Values).ToList().ForEach(tex =>
-            tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, groupIndexes, _ => RenameMeshes.IsChecked == true));
+            tex.ApplyRegex(RegexOriginal.Text, RegexResult.Text, renameIndexes, _ => RenameMeshes.IsChecked == true));
     }
 
     private void ApplyRename(object sender, RoutedEventArgs e)
