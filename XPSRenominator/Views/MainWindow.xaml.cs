@@ -414,7 +414,7 @@ public partial class MainWindow : Window
     private static bool CanDrop(ItemsControl source, TreeViewItem? target) 
     {
         bool DeepContains(ItemsControl container, TreeViewItem item) => container == item || container.Items.Cast<TreeViewItem>().Any(i => DeepContains(i, item));
-        return target != null && !DeepContains(source, target) && source.Parent != target;
+        return !Keyboard.IsKeyDown(Key.LeftCtrl) && !Keyboard.IsKeyDown(Key.RightCtrl) && target != null && !DeepContains(source, target) && source.Parent != target;
     }
 
     private static void Reparent(FrameworkElement source, ItemsControl target)
