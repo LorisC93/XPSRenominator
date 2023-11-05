@@ -255,24 +255,35 @@ public partial class MainWindow : Window
             colorPicker.ColorChanged += (sender, e) => { mesh.Vertices.ForEach(v => v.Color = colorPicker.SelectedColor); };
             meshLine.Children.Add(colorPicker);
 
-            /*TextBlock meshTextBlock = new() { Text = mesh.TranslatedName, Tag = mesh };
-                    meshTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatedName");
-                    meshLine.Children.Add(meshTextBlock);*/
-
             ContextMenu contextMenu = new();
+            MenuItem copyName = new() { Header = "Copy name from Material" };
             MenuItem clone = new() { Header = "Clone" };
             MenuItem delete = new() { Header = "Delete" };
             MenuItem exclude = new() { Header = mesh.Exclude ? "Include" : "Exclude" };
-            clone.Click += (sender, e) => CloneMeshCommand_Executed(sender, mesh);
-            delete.Click += (sender, e) => DeleteMeshCommand_Executed(sender, mesh);
-            exclude.Click += (sender, e) => ExcludeMeshCommand_Executed(sender, mesh);
+            copyName.Click += (_, _) => mesh.TranslatedName = mesh.Material.Textures[0].TranslatedName.Replace('_','-');
+            clone.Click += (_, _) =>
+            {
+                _loader.CloneMesh(mesh);
+                UpdateMaterialRender(mesh.Material);
+            };
+            delete.Click += (_, _) =>
+            {
+                _loader.DeleteMesh(mesh);
+                UpdateMaterialRender(mesh.Material);
+            };
+            exclude.Click += (sender, e) =>
+            {
+                mesh.Exclude = !mesh.Exclude;
+                UpdateMaterialRender(mesh.Material);
+            };
+            contextMenu.Items.Add(copyName);
             contextMenu.Items.Add(clone);
             contextMenu.Items.Add(delete);
             contextMenu.Items.Add(exclude);
 
             meshLine.Children.Add(new TextBlock
             {
-                Text = $"[{mesh.OriginalName}]",
+                Text = $"[{mesh.OriginalNameWithOptional}]",
                 FontWeight = mesh.Exclude ? FontWeights.Regular : FontWeights.Bold,
                 FontStyle = mesh.Exclude ? FontStyles.Italic : FontStyles.Normal,
                 Margin = new Thickness(2, 0, 2, 0),
@@ -280,7 +291,23 @@ public partial class MainWindow : Window
                 ContextMenu = contextMenu
             });
 
-            TextBox translationTextBox = new() { Text = mesh.TranslatedName, Margin = new Thickness(0, 0, 5, 0) };
+            ComboBox optionalVisibility = new() { Margin = new Thickness(0, 0, 5, 0) };
+            ComboBoxItem hidden = new() { Content = "-" };
+            ComboBoxItem visible = new() { Content = "+" };
+            hidden.Selected += (_, _) => mesh.OptionalItem.Visible = false;
+            visible.Selected += (_, _) => mesh.OptionalItem.Visible = true;
+            optionalVisibility.Items.Add(hidden);
+            optionalVisibility.Items.Add(visible);
+            optionalVisibility.SelectedItem = mesh.OptionalItem.Visible ? visible : hidden;
+            meshLine.Children.Add(optionalVisibility);
+            
+            TextBox optionalName = new() { Text = mesh.OptionalItem.TranslatedName, Margin = new Thickness(0, 0, 5, 0), MinWidth = 50 };
+            optionalName.Bind(TextBox.TextProperty, mesh.OptionalItem, "TranslatedName");
+            meshLine.Children.Add(optionalName);
+
+            meshLine.Children.Add(new TextBlock { Text = ".", Margin = new Thickness(0, 0, 5, 0) });
+
+            TextBox translationTextBox = new() { Text = mesh.TranslatedName, Margin = new Thickness(0, 0, 5, 0), MinWidth = 50 };
             translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedName");
             meshLine.Children.Add(translationTextBox);
 
@@ -482,23 +509,6 @@ public partial class MainWindow : Window
 
         if(ofd.FileName.EndsWith(".mesh.ascii"))
             LoadMeshAsciiFile(ofd.FileName, bone);
-    }
-
-    private void CloneMeshCommand_Executed(object sender, Mesh mesh)
-    {
-        _loader.CloneMesh(mesh);
-        UpdateMaterialRender(mesh.Material);
-    }
-    private void DeleteMeshCommand_Executed(object sender, Mesh mesh)
-    {
-        _loader.DeleteMesh(mesh);
-        UpdateMaterialRender(mesh.Material);
-    }
-
-    private void ExcludeMeshCommand_Executed(object sender, Mesh mesh)
-    {
-        mesh.Exclude = !mesh.Exclude;
-        UpdateMaterialRender(mesh.Material);
     }
 
     private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)

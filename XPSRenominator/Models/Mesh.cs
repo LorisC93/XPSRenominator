@@ -7,8 +7,9 @@ using System.Windows.Media;
 
 namespace XPSRenominator.Models
 {
-    internal class Mesh : Translatable, ICloneable
+    public class Mesh : Translatable, ICloneable
     {
+        public OptionalItem OptionalItem { get; set; } = new();
         public Material Material { get; set; } = new();
 
         public int UvLayers { get; set; } = 1;
@@ -17,10 +18,11 @@ namespace XPSRenominator.Models
         
         public bool Exclude { get; set; } = false;
 
-        public IEnumerable<Bone> UsedBones
-        {
-            get { return Vertices.SelectMany(v => v.Bones).SelectMany(vb => vb.Bone.GetFullTree()).Distinct(); }
-        }
+        public IEnumerable<Bone> UsedBones => Vertices.SelectMany(v => v.Bones).SelectMany(vb => vb.Bone.GetFullTree()).Distinct();
+        
+        public bool IsOptional => !string.IsNullOrEmpty(OptionalItem.TranslatedName);
+        public string OriginalNameWithOptional => IsOptional ? (OptionalItem.OriginalVisible ? "+" : "-") + OptionalItem.OriginalName + "." + OriginalName : OriginalName;
+        public string TranslatedNameWithOptional => IsOptional ? (OptionalItem.Visible ? "+" : "-") + OptionalItem.TranslatedName + "." + TranslatedName : TranslatedName;
 
         public object Clone()
         {
@@ -34,6 +36,31 @@ namespace XPSRenominator.Models
                 Faces = new List<Face>(this.Faces),
             };
         }
+
+        public void SetNameWithOptional(string name)
+        {
+            if (name.Contains('.') && (name.StartsWith('+') || name.StartsWith('-')))
+            {
+                var parts = name.Split('.', 2);
+                OptionalItem.OriginalVisible = parts[0].StartsWith('+');
+                OptionalItem.Visible = parts[0].StartsWith('+');
+                OptionalItem.OriginalName = parts[0].Remove(0, 1);
+                OptionalItem.TranslatedName = parts[0].Remove(0, 1);
+                OriginalName = parts[1];
+                TranslatedName = parts[1];
+            }
+            else
+            {
+                OriginalName = name;
+                TranslatedName = name;
+            }
+        }
+    }
+
+    public class OptionalItem: Translatable
+    {
+        public bool OriginalVisible { get; set; } = true;
+        public bool Visible { get; set; } = true;
     }
 
     public class Material : INotifyPropertyChanged, ICloneable
