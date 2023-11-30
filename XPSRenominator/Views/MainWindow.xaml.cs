@@ -11,8 +11,12 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using Xceed.Wpf.Toolkit;
+using Xceed.Wpf.Toolkit.Primitives;
 using XPSRenominator.Controllers;
 using XPSRenominator.Models;
+using MessageBox = System.Windows.MessageBox;
+using Selector = System.Windows.Controls.Primitives.Selector;
 
 namespace XPSRenominator;
 
@@ -61,11 +65,11 @@ public partial class MainWindow : Window
 
     private bool ShouldRenderBone(Bone bone) => FilteredBones.Contains(bone) || _loader.Bones.Where(b => b.Parent == bone).Any(ShouldRenderBone);
 
-    private void Refresh()
+    private void Refresh(bool force = false)
     {
-        if(_selectedTab == TabBones)
+        if(_selectedTab == TabBones && (force || BoneTree.Items.Count == 0))
             RenderBoneTree();
-        if(_selectedTab == TabMaterials)
+        if(_selectedTab == TabMaterials && (force || MaterialsPanel.Children.Count == 0))
             RenderMaterials();
     }
 
@@ -174,15 +178,15 @@ public partial class MainWindow : Window
         TextBlock materialName = new() { Text = material.Textures[0].TranslatedName, Margin = new Thickness(5, 0, 2, 0) };
         materialName.Bind(TextBlock.TextProperty, material.Textures[0], "TranslatedName");
 
-        TextBox meshRenderParameter1 = new()
-            { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25 };
-        TextBox meshRenderParameter2 = new()
-            { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25 };
-        TextBox meshRenderParameter3 = new()
-            { Text = material.RenderParameters[2].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 0, 0), MinWidth = 25 };
-        meshRenderParameter1.Bind(TextBox.TextProperty, material, "RenderParameters[0]");
-        meshRenderParameter2.Bind(TextBox.TextProperty, material, "RenderParameters[1]");
-        meshRenderParameter3.Bind(TextBox.TextProperty, material, "RenderParameters[2]");
+        DoubleUpDown meshRenderParameter1 = new()
+            { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25, FormatString = "F2", Minimum = 0, Increment = 0.1};
+        DoubleUpDown meshRenderParameter2 = new()
+            { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25, FormatString = "F2", Minimum = 0, Increment = 0.1 };
+        DoubleUpDown meshRenderParameter3 = new()
+            { Text = material.RenderParameters[2].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 0, 0), MinWidth = 25, FormatString = "F2", Minimum = 0, Increment = 0.1 };
+        meshRenderParameter1.Bind(InputBase.TextProperty, material, "RenderParameters[0]");
+        meshRenderParameter2.Bind(InputBase.TextProperty, material, "RenderParameters[1]");
+        meshRenderParameter3.Bind(InputBase.TextProperty, material, "RenderParameters[2]");
         groupBoxHeader.Children.Add(materialName);
         groupBoxHeader.Children.Add(meshRenderParameter1);
         groupBoxHeader.Children.Add(meshRenderParameter2);
@@ -208,23 +212,26 @@ public partial class MainWindow : Window
         texturesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
         texturesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         texturesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
+        texturesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Auto) });
         texturesGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
         group.Content = texturesGrid;
 
         foreach (var textureType in RenderGroupUtils.TextureTypes)
         {
+            var meshes = _loader.Meshes.Where(m => m.Material == material).ToList();
+
             material.Textures.TryAdd(textureType, new Texture());
 
             material.Textures.TryGetValue(textureType, out var texture);
 
             texturesGrid.RowDefinitions.Add(new RowDefinition());
 
-            TextBlock textureTypeTextBlock = new() { Text = textureType.Code(), Margin = new Thickness(0, 0, 5, 0) };
-            Grid.SetRow(textureTypeTextBlock, texturesGrid.RowDefinitions.Count - 1);
-            Grid.SetColumn(textureTypeTextBlock, 0);
-            textureTypeTextBlock.Foreground = Brushes.Gray;
-            textureTypeTextBlock.VerticalAlignment = VerticalAlignment.Center;
-            texturesGrid.Children.Add(textureTypeTextBlock);
+            TextBlock textureKind = new() { Text = textureType.Code(), Margin = new Thickness(0, 0, 5, 0) };
+            Grid.SetRow(textureKind, texturesGrid.RowDefinitions.Count - 1);
+            Grid.SetColumn(textureKind, 0);
+            textureKind.Foreground = Brushes.Gray;
+            textureKind.VerticalAlignment = VerticalAlignment.Center;
+            texturesGrid.Children.Add(textureKind);
 
             TextBox translationTextBox = new() { Text = texture!.TranslatedName };
             Grid.SetRow(translationTextBox, texturesGrid.RowDefinitions.Count - 1);
@@ -233,9 +240,19 @@ public partial class MainWindow : Window
             translationTextBox.VerticalAlignment = VerticalAlignment.Center;
             texturesGrid.Children.Add(translationTextBox);
 
+            if (textureType is TextureType.Lightmap or TextureType.Specular && meshes.Any(m => m.UvLayers > 1))
+            {
+                IntegerUpDown uvLayer = new() { Text = texture!.UvLayer.ToString(CultureInfo.InvariantCulture), Minimum = 0, Maximum = meshes.Select(m => m.UvLayers - 1).Max()};
+                Grid.SetRow(uvLayer, texturesGrid.RowDefinitions.Count - 1);
+                Grid.SetColumn(uvLayer, 2);
+                uvLayer.Bind(InputBase.TextProperty, texture, "UvLayer");
+                uvLayer.VerticalAlignment = VerticalAlignment.Center;
+                texturesGrid.Children.Add(uvLayer);
+            }
+
             TextBlock translatingTextBlock = new() { Text = texture.TranslatingName };
             Grid.SetRow(translatingTextBlock, texturesGrid.RowDefinitions.Count - 1);
-            Grid.SetColumn(translatingTextBlock, 2);
+            Grid.SetColumn(translatingTextBlock, 3);
             translatingTextBlock.Foreground = Brushes.Red;
             translatingTextBlock.VerticalAlignment = VerticalAlignment.Center;
             translatingTextBlock.Bind(TextBlock.TextProperty, texture, "TranslatingName");
@@ -244,7 +261,7 @@ public partial class MainWindow : Window
 
         StackPanel meshesPanel = new() { Orientation = Orientation.Vertical, VerticalAlignment = VerticalAlignment.Center };
         Grid.SetRowSpan(meshesPanel, texturesGrid.RowDefinitions.Count);
-        Grid.SetColumn(meshesPanel, 3);
+        Grid.SetColumn(meshesPanel, 4);
 
         foreach (Mesh mesh in _loader.Meshes.Where(m => m.Material == material))
         {
@@ -257,10 +274,12 @@ public partial class MainWindow : Window
 
             ContextMenu contextMenu = new();
             MenuItem copyName = new() { Header = "Copy name from Material" };
+            MenuItem swapUv = new() { Header = "Swap Uv" };
             MenuItem clone = new() { Header = "Clone" };
             MenuItem delete = new() { Header = "Delete" };
             MenuItem exclude = new() { Header = mesh.Exclude ? "Include" : "Exclude" };
             copyName.Click += (_, _) => mesh.TranslatedName = mesh.Material.Textures[0].TranslatedName.Replace('_','-');
+            swapUv.Click += (_, _) => mesh.SwapUv();
             clone.Click += (_, _) =>
             {
                 _loader.CloneMesh(mesh);
@@ -277,6 +296,7 @@ public partial class MainWindow : Window
                 UpdateMaterialRender(mesh.Material);
             };
             contextMenu.Items.Add(copyName);
+            contextMenu.Items.Add(swapUv);
             contextMenu.Items.Add(clone);
             contextMenu.Items.Add(delete);
             contextMenu.Items.Add(exclude);
@@ -291,14 +311,11 @@ public partial class MainWindow : Window
                 ContextMenu = contextMenu
             });
 
-            ComboBox optionalVisibility = new() { Margin = new Thickness(0, 0, 5, 0) };
-            ComboBoxItem hidden = new() { Content = "-" };
-            ComboBoxItem visible = new() { Content = "+" };
-            hidden.Selected += (_, _) => mesh.OptionalItem.Visible = false;
-            visible.Selected += (_, _) => mesh.OptionalItem.Visible = true;
-            optionalVisibility.Items.Add(hidden);
-            optionalVisibility.Items.Add(visible);
-            optionalVisibility.SelectedItem = mesh.OptionalItem.Visible ? visible : hidden;
+            ComboBox optionalVisibility = new() { Margin = new Thickness(0, 0, 5, 0), SelectedValuePath = "value", DisplayMemberPath = "text" };
+            optionalVisibility.SelectionChanged += (_, e) => e.Handled = true;
+            optionalVisibility.Items.Add(new { text = "+", value = true});
+            optionalVisibility.Items.Add(new { text = "-", value = false});
+            optionalVisibility.Bind(Selector.SelectedValueProperty, mesh.OptionalItem, "Visible");
             meshLine.Children.Add(optionalVisibility);
             
             TextBox optionalName = new() { Text = mesh.OptionalItem.TranslatedName, Margin = new Thickness(0, 0, 5, 0), MinWidth = 50 };
@@ -515,33 +532,38 @@ public partial class MainWindow : Window
     {
         BoneTreeScroll.ScrollToVerticalOffset(BoneTreeScroll.VerticalOffset - e.Delta / 3);
     }
-
+    
+    private void UpdateButtonVisibilities()
+    {
+        SaveMeshButton.Visibility = string.IsNullOrEmpty(_originalMeshAsciiName) ? Visibility.Collapsed : Visibility.Visible;
+        SaveBoneDictButton.Visibility = string.IsNullOrEmpty(_originalMeshAsciiName) && string.IsNullOrEmpty(_originalPoseName)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+        UnloadAllButton.Visibility = string.IsNullOrEmpty(_originalMeshAsciiName) && string.IsNullOrEmpty(_originalPoseName)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
     private void LoadMeshAsciiFile(string fileName, Bone? appendTo = null)
     {
         _originalMeshAsciiName ??= string.Join("",fileName.SkipLast(".mesh.ascii".Length));
-        _originalPoseName = null;
-        SaveMeshButton.Visibility = Visibility.Visible;
-        SaveBoneDictButton.Visibility = Visibility.Visible;
-        UnloadAllButton.Visibility = Visibility.Visible;
+        UpdateButtonVisibilities();
 
         _loader.LoadAsciiFile(fileName, appendTo);
 
-        Refresh();
+        Refresh(true);
 
         Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
         Progress.Dispatcher.Invoke(() => Progress.Visibility = Visibility.Visible);
     }
+
     private void LoadPoseFile(string fileName)
     {
         _originalPoseName ??= string.Join("",fileName.SkipLast(".pose".Length));
-        _originalMeshAsciiName = null;
-        SaveMeshButton.Visibility = Visibility.Visible;
-        SaveBoneDictButton.Visibility = Visibility.Visible;
-        UnloadAllButton.Visibility = Visibility.Visible;
+        UpdateButtonVisibilities();
 
         _loader.LoadPoseFile(fileName);
 
-        Refresh();
+        Refresh(true);
 
         Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
         Progress.Dispatcher.Invoke(() => Progress.Visibility = Visibility.Visible);
@@ -655,7 +677,7 @@ public partial class MainWindow : Window
         _loader.Bones.Clear();
         _loader.Meshes.Clear();
         MaterialManager.Materials.Clear();
-        Refresh();
+        Refresh(true);
         _originalBonedictName = null;
         _originalMeshAsciiName = null;
         _originalPoseName = null;
@@ -695,7 +717,7 @@ public partial class MainWindow : Window
     {
         if(sender is TextBox t && await UserKeepsTyping(t)) return;
 
-        Refresh();
+        Refresh(true);
     }
 
     private async void Regex_Changed(object sender, EventArgs? e)

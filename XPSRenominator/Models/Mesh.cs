@@ -11,7 +11,7 @@ namespace XPSRenominator.Models
     {
         public OptionalItem OptionalItem { get; set; } = new();
         public Material Material { get; set; } = new();
-
+        
         public int UvLayers { get; set; } = 1;
         public List<Vertex> Vertices { get; set; } = new();
         public List<Face> Faces { get; set; } = new();
@@ -21,8 +21,13 @@ namespace XPSRenominator.Models
         public IEnumerable<Bone> UsedBones => Vertices.SelectMany(v => v.Bones).SelectMany(vb => vb.Bone.GetFullTree()).Distinct();
         
         public bool IsOptional => !string.IsNullOrEmpty(OptionalItem.TranslatedName);
-        public string OriginalNameWithOptional => IsOptional ? (OptionalItem.OriginalVisible ? "+" : "-") + OptionalItem.OriginalName + "." + OriginalName : OriginalName;
+        public string OriginalNameWithOptional => !string.IsNullOrEmpty(OptionalItem.OriginalName) ? (OptionalItem.OriginalVisible ? "+" : "-") + OptionalItem.OriginalName + "." + OriginalName : OriginalName;
         public string TranslatedNameWithOptional => IsOptional ? (OptionalItem.Visible ? "+" : "-") + OptionalItem.TranslatedName + "." + TranslatedName : TranslatedName;
+        
+        public void SwapUv()
+        {
+            if (UvLayers == 2) Vertices.ForEach(vertex => (vertex.Uv, vertex.Uv2) = (vertex.Uv2!, vertex.Uv));
+        }
 
         public object Clone()
         {
