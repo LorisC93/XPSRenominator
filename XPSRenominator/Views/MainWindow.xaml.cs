@@ -616,7 +616,8 @@ public partial class MainWindow : Window
             CheckFileExists = true,
             Title = "Select the bone list names to load",
             Filter = "BoneDict file|*.txt",
-            Multiselect = false
+            Multiselect = false,
+            InitialDirectory = "F:\\3D-Models\\_Bonedict"
         };
         if (ofd.ShowDialog() == true)
         {
@@ -626,6 +627,8 @@ public partial class MainWindow : Window
 
     private void SaveBonesFileDialog(object sender, RoutedEventArgs e)
     {
+        var fileName = Path.GetFileNameWithoutExtension(_originalBonedictName ?? "Bonedict");
+        var directory = Path.GetDirectoryName(_originalBonedictName ?? "Bonedict");
         SavingMessage.Content = "Saving, please wait.";
 
         SaveFileDialog sfd = new()
@@ -633,7 +636,8 @@ public partial class MainWindow : Window
             Title = "Select where to save the bone list names",
             AddExtension = true,
             Filter = "BoneDict file|*.txt",
-            FileName = _originalBonedictName ?? "Bonedict"
+            FileName = fileName,
+            InitialDirectory = directory
         };
         if (sfd.ShowDialog() != true) return;
         _originalBonedictName = sfd.FileName;
@@ -649,6 +653,7 @@ public partial class MainWindow : Window
         SavingMessage.Content = "Saving, please wait.";
 
         var fileName = Path.GetFileNameWithoutExtension(_originalMeshAsciiName ?? _originalPoseName ?? "generic_item");
+        var directory = Path.GetDirectoryName(_originalMeshAsciiName ?? _originalPoseName ?? "generic_item");
         if (!fileName.EndsWith("_renamed")) fileName += "_renamed";
 
         SaveFileDialog sfd = new()
@@ -657,7 +662,8 @@ public partial class MainWindow : Window
             AddExtension = true,
             Filter = "XPS .mesh.ascii|*.mesh.ascii|XPS .pose|*.pose",
             FilterIndex = string.IsNullOrEmpty(_originalPoseName) ? 1 : 2,
-            FileName = fileName
+            FileName = fileName,
+            InitialDirectory = directory
         };
         if (sfd.ShowDialog() != true) return;
         Progress.Maximum = _loader.Meshes.Count(m => !m.Exclude) + _loader.Meshes.Where(m => !m.Exclude).SelectMany(mesh => mesh.UsedBones).Distinct().Count();
