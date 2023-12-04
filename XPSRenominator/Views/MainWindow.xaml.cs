@@ -598,8 +598,10 @@ public partial class MainWindow : Window
     {
         _originalBonedictName = fileName;
         UpdateButtonVisibilities();
-
-        _loader.LoadBoneFile(fileName, keepAll);
+        
+        Progress.Value = 0;
+        Saving.Visibility = Visibility.Visible;
+        _loader.LoadBoneFile(fileName, keepAll, n => Progress.Maximum = n, IncreaseProgress);
 
         RenderBoneTree();
     }
@@ -654,7 +656,7 @@ public partial class MainWindow : Window
             FileName = (_originalMeshAsciiName ?? _originalPoseName ?? "generic_item") + "_renamed"
         };
         if (sfd.ShowDialog() != true) return;
-        Progress.Maximum = _loader.GetNeededProgress();
+        Progress.Maximum = _loader.Meshes.Count(m => !m.Exclude) + _loader.Meshes.Where(m => !m.Exclude).SelectMany(mesh => mesh.UsedBones).Distinct().Count();
         Progress.Value = 0;
         Saving.Visibility = Visibility.Visible;
 

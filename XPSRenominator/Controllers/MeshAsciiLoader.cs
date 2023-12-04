@@ -247,18 +247,20 @@ namespace XPSRenominator.Controllers
                 MaterialManager.Materials.Remove(mesh.Material);
         }
 
-        public void LoadBoneFile(string fileName, bool keepAll = true)
+        public void LoadBoneFile(string fileName, bool keepAll, Action<int> setProgressMax, Action increaseProgress)
         {
-            File.ReadLines(fileName).ToList().ForEach(boneLine =>
+            var lines = File.ReadLines(fileName).ToList();
+            setProgressMax(lines.Count);
+            lines.ForEach(boneLine =>
             {
                 if (!boneLine.StartsWith("#") && !string.IsNullOrWhiteSpace(boneLine))
                 {
-                    string[] parts = boneLine.Split(';').Select(part => part.Trim()).ToArray();
+                    var parts = boneLine.Split(';').Select(part => part.Trim()).ToArray();
                     if (parts.Length == 2)
                     {
-                        string originalName = parts[0].Clean();
-                        string translation = parts[1].Clean();
-                        Bone? bone = Bones.Find(b => b.OriginalName == originalName);
+                        var originalName = parts[0].Clean();
+                        var translation = parts[1].Clean();
+                        var bone = Bones.Find(b => b.OriginalName == originalName);
                         if (bone != null)
                         {
                             bone.TranslatedName = translation;
@@ -274,28 +276,23 @@ namespace XPSRenominator.Controllers
                         }
                     }
                 }
+
+                increaseProgress();
             });
         }
 
-        private List<Bone> GetBoneConflicts(IEnumerable<Bone>? bones = null) => (bones ?? Bones)
+        private IEnumerable<Bone> GetBoneConflicts(IEnumerable<Bone>? bones = null) => (bones ?? Bones)
             .Where(b => b.FromMeshAscii)
             .GroupBy(b => b.TranslatedName)
             .Where(g => g.Count() > 1)
             .SelectMany(g => g)
-            .Distinct()
-            .ToList();
+            .Distinct();
 
-        private List<Mesh> GetMeshConflicts(IEnumerable<Mesh>? meshes = null) => (meshes ?? Meshes)
+        private IEnumerable<Mesh> GetMeshConflicts(IEnumerable<Mesh>? meshes = null) => (meshes ?? Meshes)
             .GroupBy(b => b.TranslatedName)
             .Where(g => g.Count() > 1)
             .SelectMany(g => g)
-            .Distinct()
-            .ToList();
-
-        public int GetNeededProgress(List<Mesh>? meshes = null)
-        {
-            return (meshes ?? Meshes).Count(m => !m.Exclude) + (meshes ?? Meshes).Where(m => !m.Exclude).SelectMany(mesh => mesh.UsedBones).Distinct().Count();
-        }
+            .Distinct();
 
         public bool SaveAscii(string fileName, Action increaseProgress) => ExportMeshes(Meshes.Where(m => !m.Exclude).ToList(), fileName, increaseProgress);
 
