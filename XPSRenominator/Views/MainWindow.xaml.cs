@@ -3,6 +3,7 @@ using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -530,7 +531,7 @@ public partial class MainWindow : Window
 
     private void BoneTree_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        BoneTreeScroll.ScrollToVerticalOffset(BoneTreeScroll.VerticalOffset - e.Delta / 3);
+        BoneTreeScroll.ScrollToVerticalOffset(BoneTreeScroll.VerticalOffset - e.Delta / 3.0);
     }
     
     private void UpdateButtonVisibilities()
@@ -647,13 +648,16 @@ public partial class MainWindow : Window
 
         SavingMessage.Content = "Saving, please wait.";
 
+        var fileName = Path.GetFileNameWithoutExtension(_originalMeshAsciiName ?? _originalPoseName ?? "generic_item");
+        if (!fileName.EndsWith("_renamed")) fileName += "_renamed";
+
         SaveFileDialog sfd = new()
         {
             Title = "Select where to save the resulting mesh",
             AddExtension = true,
             Filter = "XPS .mesh.ascii|*.mesh.ascii|XPS .pose|*.pose",
             FilterIndex = string.IsNullOrEmpty(_originalPoseName) ? 1 : 2,
-            FileName = (_originalMeshAsciiName ?? _originalPoseName ?? "generic_item") + "_renamed"
+            FileName = fileName
         };
         if (sfd.ShowDialog() != true) return;
         Progress.Maximum = _loader.Meshes.Count(m => !m.Exclude) + _loader.Meshes.Where(m => !m.Exclude).SelectMany(mesh => mesh.UsedBones).Distinct().Count();
