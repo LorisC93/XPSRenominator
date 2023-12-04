@@ -67,7 +67,7 @@ public partial class MainWindow : Window
 
     private void Refresh(bool force = false)
     {
-        if(_selectedTab == TabBones && (force || BoneTree.Items.Count == 0))
+        if(force || _selectedTab == TabBones && (force || BoneTree.Items.Count == 0))
             RenderBoneTree();
         if(_selectedTab == TabMaterials && (force || MaterialsPanel.Children.Count == 0))
             RenderMaterials();
@@ -535,11 +535,15 @@ public partial class MainWindow : Window
     
     private void UpdateButtonVisibilities()
     {
-        SaveMeshButton.Visibility = string.IsNullOrEmpty(_originalMeshAsciiName) ? Visibility.Collapsed : Visibility.Visible;
-        SaveBoneDictButton.Visibility = string.IsNullOrEmpty(_originalMeshAsciiName) && string.IsNullOrEmpty(_originalPoseName)
+        SaveMeshButton.Visibility = string.IsNullOrEmpty(_originalMeshAsciiName) && string.IsNullOrEmpty(_originalPoseName) ? Visibility.Collapsed : Visibility.Visible;
+        SaveBoneDictButton.Visibility = string.IsNullOrEmpty(_originalMeshAsciiName) &&
+                                        string.IsNullOrEmpty(_originalPoseName) &&
+                                        string.IsNullOrEmpty(_originalBonedictName)
             ? Visibility.Collapsed
             : Visibility.Visible;
-        UnloadAllButton.Visibility = string.IsNullOrEmpty(_originalMeshAsciiName) && string.IsNullOrEmpty(_originalPoseName)
+        UnloadAllButton.Visibility = string.IsNullOrEmpty(_originalMeshAsciiName) &&
+                                     string.IsNullOrEmpty(_originalPoseName) &&
+                                     string.IsNullOrEmpty(_originalBonedictName)
             ? Visibility.Collapsed
             : Visibility.Visible;
     }
@@ -593,6 +597,7 @@ public partial class MainWindow : Window
     private void LoadBonesFile(string fileName, bool keepAll = true)
     {
         _originalBonedictName = fileName;
+        UpdateButtonVisibilities();
 
         _loader.LoadBoneFile(fileName, keepAll);
 
@@ -627,13 +632,12 @@ public partial class MainWindow : Window
             Filter = "BoneDict file|*.txt",
             FileName = _originalBonedictName ?? "Bonedict"
         };
-        if (sfd.ShowDialog() == true)
-        {
-            Progress.Maximum = _loader.Bones.Count(b => b.OriginalName != b.TranslatedName);
-            Progress.Value = 0;
-            Saving.Visibility = Visibility.Visible;
-            new Thread(() => _loader.SaveBones(sfd.FileName, IncreaseProgress)).Start();
-        }
+        if (sfd.ShowDialog() != true) return;
+        _originalBonedictName = sfd.FileName;
+        Progress.Maximum = _loader.Bones.Count(b => b.OriginalName != b.TranslatedName);
+        Progress.Value = 0;
+        Saving.Visibility = Visibility.Visible;
+        new Thread(() => _loader.SaveBones(sfd.FileName, IncreaseProgress)).Start();
     }
 
     private void SaveMeshFileDialog(object sender, RoutedEventArgs e)
@@ -658,15 +662,16 @@ public partial class MainWindow : Window
         {
             if (sfd.FileName.EndsWith(".mesh.ascii"))
             {
+                _originalMeshAsciiName = sfd.FileName;
                 if (_loader.SaveAscii(sfd.FileName, IncreaseProgress)) return;
                 MessageBox.Show("conflicting bone and/or mesh names found, or invalid Materials, solve them before saving", "Conflict found",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error, MessageBoxResult.OK);
                 Saving.Dispatcher.Invoke(() => Saving.Visibility = Visibility.Hidden);
             }
-
-            if (sfd.FileName.EndsWith(".pose"))
+            else if (sfd.FileName.EndsWith(".pose"))
             {
+                _originalPoseName = sfd.FileName;
                 _loader.SavePose(sfd.FileName, IncreaseProgress);
             }
         }).Start();
@@ -677,7 +682,8 @@ public partial class MainWindow : Window
         _loader.Bones.Clear();
         _loader.Meshes.Clear();
         MaterialManager.Materials.Clear();
-        Refresh(true);
+        RenderBoneTree();
+        RenderMaterials();
         _originalBonedictName = null;
         _originalMeshAsciiName = null;
         _originalPoseName = null;
