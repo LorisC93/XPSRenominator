@@ -4,6 +4,7 @@ using System.Windows.Data;
 using System.Linq;
 using XPSRenominator.Models;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 
 namespace XPSRenominator.Controllers
 {
@@ -41,6 +42,8 @@ namespace XPSRenominator.Controllers
         public static int[] ExtractIntArray(this string s) => s.RemoveComment().Split(' ').Select(int.Parse).ToArray();
         public static byte[] ExtractByteArray(this string s) => s.RemoveComment().Split(' ').Select(byte.Parse).ToArray();
         public static double[] ExtractDoubleArray(this string s) => s.RemoveComment().Split(' ').Select(double.Parse).ToArray();
+        public static Point3D ExtractPoint3D(this string s) => ExtractDoubleArray(s).ToPoint3D();
+        public static Point3D ToPoint3D(this double[] values) => new(values[0], values[1], values[2]);
 
         public static string RemoveComment(this string line) => line.Split('#').First().Trim();
     }

@@ -421,9 +421,9 @@ public partial class MainWindow : Window
     private void BoneTree_SelectedItemsChanged(object sender, List<TreeViewItem> items)
     {
         if (items.Count <= 0 || items[0] is not { Tag: Bone bone }) return;
-        SelectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position[0]");
-        SelectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position[1]");
-        SelectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position[2]");
+        SelectedBoneXPosition.Bind(TextBox.TextProperty, bone, "Position.X");
+        SelectedBoneYPosition.Bind(TextBox.TextProperty, bone, "Position.Y");
+        SelectedBoneZPosition.Bind(TextBox.TextProperty, bone, "Position.Z");
 
         if (OnlySelected.IsChecked == true)
             Regex_Changed(sender, null);
@@ -504,6 +504,17 @@ public partial class MainWindow : Window
     {
         if (BoneTree.SelectedItems.First().Tag is not Bone bone) return;
         _loader.MakeRoot(bone);
+        RenderBoneTree();
+    }
+    private void MirrorBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute =  BoneTree.SelectedItems.Count == 1 &&
+                        BoneTree.SelectedItems.First().Tag is Bone bone1 &&
+                       (bone1.TranslatedName.Contains("right") || bone1.TranslatedName.Contains("left"));
+    }
+    private void MirrorBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        _loader.MirrorBoneTranslation((BoneTree.SelectedItems.First().Tag as Bone)!);
         RenderBoneTree();
     }
     private void AppendCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -644,7 +655,7 @@ public partial class MainWindow : Window
         Progress.Maximum = _loader.Bones.Count(b => b.OriginalName != b.TranslatedName);
         Progress.Value = 0;
         Saving.Visibility = Visibility.Visible;
-        new Thread(() => _loader.SaveBones(sfd.FileName, IncreaseProgress)).Start();
+        new Thread(() => _loader.SaveBonedict(sfd.FileName, IncreaseProgress)).Start();
     }
 
     private void SaveMeshFileDialog(object sender, RoutedEventArgs e)

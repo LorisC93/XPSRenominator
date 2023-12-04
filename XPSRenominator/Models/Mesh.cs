@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 
 namespace XPSRenominator.Models
 {
@@ -136,9 +137,9 @@ namespace XPSRenominator.Models
     }
     public class Vertex: ICloneable
     {
-        public double[] Position { get; set; } = new double[3]; //XYZ
-        public double[] Normal { get; set; } = new double[3]; //XYZ
-        public Color Color { get; set; } = new(); //RGBA
+        public Point3D Position { get; set; }
+        public Point3D Normal { get; set; }
+        public Color Color { get; set; }
         public double[] Uv { get; set; } = new double[2]; //UV
         public double[]? Uv2 { get; set; } //UV
         public List<VertexBone> Bones { get; set; } = new();

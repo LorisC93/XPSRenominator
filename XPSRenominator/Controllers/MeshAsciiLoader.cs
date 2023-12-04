@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Windows.Media.Media3D;
 using XPSRenominator.Models;
 
 namespace XPSRenominator.Controllers
@@ -54,10 +55,10 @@ namespace XPSRenominator.Controllers
                 {
                     OriginalName = name,
                     TranslatedName = name,
-                    Position = originalLines[i + 2].RemoveComment().ExtractDoubleArray(),
+                    Position = originalLines[i + 2].ExtractPoint3D(),
                     FromMeshAscii = true
                 };
-                if (appendTo != null) bone.Position = bone.Position.Zip(appendTo.Position).Select(n => n.First + n.Second).ToArray();
+                if (appendTo != null) bone.Position.Offset(appendTo.Position.X, appendTo.Position.Y, appendTo.Position.Z);
 
                 parentIndexes.Add(bone, parentIndex);
                 bones.Add(bone);
@@ -104,9 +105,9 @@ namespace XPSRenominator.Controllers
                 {
                     OriginalName = parts[0].Clean(),
                     TranslatedName = parts[0].Clean(),
-                    Rotation = values[..3],
-                    Position = values[3..6],
-                    Scale = values[6..9],
+                    Rotation = values[..3].ToPoint3D(),
+                    Position = values[3..6].ToPoint3D(),
+                    Scale = values[6..9].ToPoint3D(),
                     FromMeshAscii = true
                 };
             }).ToList();
@@ -164,14 +165,14 @@ namespace XPSRenominator.Controllers
                     var hasUv = originalLines[pointer + 3].ExtractDoubleArray().Length == 2;
                     var vertex = new Vertex
                     {
-                        Position = originalLines[pointer++].ExtractDoubleArray(),
-                        Normal = originalLines[pointer++].ExtractDoubleArray(),
+                        Position = originalLines[pointer++].ExtractPoint3D(),
+                        Normal = originalLines[pointer++].ExtractPoint3D(),
                         Color = originalLines[pointer++].ExtractByteArray().ToColor(),
                         Uv = hasUv ? originalLines[pointer++].ExtractDoubleArray() : new []{ 0.0, 0.0 },
                         Uv2 = mesh.UvLayers == 2 ? originalLines[pointer++].ExtractDoubleArray() : null,
                         Bones = Utils.CreateVertexBones(originalLines[pointer++].ExtractIntArray(), originalLines[pointer++].ExtractDoubleArray(), bonesToUse)
                     };
-                    if (appendTo != null) vertex.Position = vertex.Position.Zip(appendTo.Position).Select(n => n.First + n.Second).ToArray();
+                    if (appendTo != null) vertex.Position.Offset(appendTo.Position.X, appendTo.Position.Y, appendTo.Position.Z);
                     mesh.Vertices.Add(vertex);
                 }
                 int faceCount = int.Parse(originalLines[pointer++].RemoveComment());
@@ -219,7 +220,7 @@ namespace XPSRenominator.Controllers
                 OriginalName = "bone" + Bones.Count,
                 TranslatedName = "bone" + Bones.Count,
                 FromMeshAscii = true,
-                Position = parent != null ? (double[])parent.Position.Clone() : new double[3] { 0, 0, 0 },
+                Position = parent != null ? new Point3D(parent.Position.X, parent.Position.Y, parent.Position.Z) : new Point3D(),
                 Parent = parent
             };
             Bones.Add(toAdd);
@@ -227,7 +228,7 @@ namespace XPSRenominator.Controllers
 
         public void MakeRoot(Bone bone)
         {
-            bone.Position = new double[] { 0, 0, 0 };
+            bone.Position = new Point3D();
             bone.TranslatedName = "root ground";
             bone.Parent = null;
             bone.FromMeshAscii = true;
@@ -311,7 +312,7 @@ namespace XPSRenominator.Controllers
             {
                 file.WriteLine(bone.TranslatedName);
                 file.WriteLine((bone.Parent == null ? "-1" : usedBones.IndexOf(bone.Parent).ToString()) + " # parent index");
-                file.WriteLine(string.Join(" ", bone.Position));
+                file.WriteLine($"{bone.Position.X} {bone.Position.Y} {bone.Position.Z}");
                 increaseProgress();
             });
             file.WriteLine(meshes.Count + " # meshes");
@@ -336,8 +337,8 @@ namespace XPSRenominator.Controllers
                 file.WriteLine(mesh.Vertices.Count + " # vertices");
                 mesh.Vertices.ForEach(v =>
                 {
-                    file.WriteLine(string.Join(' ', v.Position));
-                    file.WriteLine(string.Join(' ', v.Normal));
+                    file.WriteLine($"{v.Position.X} {v.Position.Y} {v.Position.Z}");
+                    file.WriteLine($"{v.Normal.X} {v.Normal.Y} {v.Normal.Z}");
                     file.WriteLine($"{v.Color.R} {v.Color.G} {v.Color.B} {v.Color.A}");
                     file.WriteLine(string.Join(' ', v.Uv));
                     if (mesh.UvLayers == 2) file.WriteLine(string.Join(' ', v.Uv2 ?? new double[] { 0, 0 }));
@@ -354,10 +355,8 @@ namespace XPSRenominator.Controllers
         public void SavePose(string fileName, Action increaseProgress)
         {
             using StreamWriter file = new(fileName, false);
-            Bones.Where(b => b.FromMeshAscii).Select(b => b.TranslatedName + ": " +
-                             string.Join(' ', b.Rotation) + " " +
-                             string.Join(' ', b.Position) + " " +
-                             string.Join(' ', b.Scale))
+            Bones.Where(b => b.FromMeshAscii).Select(b =>
+                    $"{b.TranslatedName}: {b.Rotation.X} {b.Rotation.Y} {b.Rotation.Z} {b.Position.X} {b.Position.Y} {b.Position.Z} {b.Scale.X} {b.Scale.Y} {b.Scale.Z}")
                 .ToList().ForEach(line =>
                 {
                     file.WriteLine(line);
@@ -365,7 +364,7 @@ namespace XPSRenominator.Controllers
                 });
         }
 
-        public void SaveBones(string fileName, Action increaseProgress)
+        public void SaveBonedict(string fileName, Action increaseProgress)
         {
             using StreamWriter file = new(fileName, false);
             Bones.Where(b => b.OriginalName != b.TranslatedName).Select(b => b.OriginalName + ";" + b.TranslatedName).ToList().ForEach(line =>
@@ -417,6 +416,16 @@ namespace XPSRenominator.Controllers
             }
 
             return indexes;
+        }
+
+        public void MirrorBoneTranslation(Bone source)
+        {
+            var leftToRight = source.TranslatedName.Contains("left");
+            var target = Bones.Find(bone => bone.IsMirrored(source));
+            if (target == null) return;
+            target.TranslatedName = source.TranslatedName.Replace(leftToRight ? "left" : "right", leftToRight ? "right" : "left");
+            foreach (var child in Bones.Where(bone => bone.Parent == source)) MirrorBoneTranslation(child);
+
         }
     }
 }

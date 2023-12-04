@@ -6,7 +6,7 @@
         xmlns:controls="clr-namespace:XPSRenominator.Controls"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator 3.6" Height="900" Width="850">
+        Title="XPS Renominator 3.7" Height="900" Width="850">
     <Window.Resources>
         <Style TargetType="Button">
             <Setter Property="Template">
@@ -164,6 +164,7 @@
                                         <CommandBinding Command="Cut" CanExecute="CutBoneCommand_CanExecute" Executed="CutBoneCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="Paste" CanExecute="PasteBoneCommand_CanExecute" Executed="PasteBoneCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="New" CanExecute="NewBoneCommand_CanExecute" Executed="NewBoneCommand_Executed"></CommandBinding>
+                                        <CommandBinding Command="Properties" CanExecute="MirrorBoneCommand_CanExecute" Executed="MirrorBoneCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="Replace" CanExecute="MakeRootBoneCommand_CanExecute" Executed="MakeRootBoneCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="Open" CanExecute="AppendCommand_CanExecute" Executed="AppendCommand_Executed"></CommandBinding>
                                     </controls:MultiSelectTreeView.CommandBindings>
@@ -174,6 +175,7 @@
                                             <Separator></Separator>
                                             <MenuItem Header="Make Root" Command="Replace"></MenuItem>
                                             <MenuItem Header="Add Bone" Command="New"></MenuItem>
+                                            <MenuItem Header="Mirror Translation" Command="Properties"></MenuItem>
                                             <Separator></Separator>
                                             <MenuItem Header="Append" Command="Open"></MenuItem>
                                         </ContextMenu>
