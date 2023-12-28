@@ -20,6 +20,7 @@ namespace XPSRenominator.Models
             {
                 _translatedName = value;
                 OnPropertyChanged();
+                OnTranslationChange();
             }
         }
         public string? TranslatingName
@@ -29,6 +30,10 @@ namespace XPSRenominator.Models
                 _translatingName = value;
                 OnPropertyChanged();
             }
+        }
+
+        protected virtual void OnTranslationChange()
+        {
         }
 
         public string OriginalName { get; set; } = "";

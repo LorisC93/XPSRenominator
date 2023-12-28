@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using Xceed.Wpf.Toolkit;
@@ -304,7 +305,7 @@ public partial class MainWindow : Window
 
             meshLine.Children.Add(new TextBlock
             {
-                Text = $"[{mesh.OriginalNameWithOptional}]",
+                Text = $"[{mesh.OriginalName}]",
                 FontWeight = mesh.Exclude ? FontWeights.Regular : FontWeights.Bold,
                 FontStyle = mesh.Exclude ? FontStyles.Italic : FontStyles.Normal,
                 Margin = new Thickness(2, 0, 2, 0),
@@ -313,27 +314,31 @@ public partial class MainWindow : Window
             });
 
             ComboBox optionalVisibility = new() { Margin = new Thickness(0, 0, 5, 0), SelectedValuePath = "value", DisplayMemberPath = "text" };
-            optionalVisibility.SelectionChanged += (_, e) => e.Handled = true;
+            optionalVisibility.SelectionChanged += (_, e) =>
+            {
+                e.Handled = true;
+                if(mesh.IsOptional) _loader.Meshes.Where(m => m.OptionalItemName == mesh.OptionalItemName).ToList().ForEach(m => m.IsOptionalItemVisible = mesh.IsOptionalItemVisible);
+            };
             optionalVisibility.Items.Add(new { text = "+", value = true});
             optionalVisibility.Items.Add(new { text = "-", value = false});
-            optionalVisibility.Bind(Selector.SelectedValueProperty, mesh.OptionalItem, "Visible");
+            optionalVisibility.Bind(Selector.SelectedValueProperty, mesh, "IsOptionalItemVisible");
+            optionalVisibility.Bind(Selector.IsEnabledProperty, mesh, "IsOptional", BindingMode.OneWay);
+            optionalVisibility.Bind(Selector.ToolTipProperty, mesh, "TranslatedName");
             meshLine.Children.Add(optionalVisibility);
             
-            TextBox optionalName = new() { Text = mesh.OptionalItem.TranslatedName, Margin = new Thickness(0, 0, 5, 0), MinWidth = 50 };
-            optionalName.Bind(TextBox.TextProperty, mesh.OptionalItem, "TranslatedName");
+            TextBox optionalName = new() { Margin = new Thickness(0, 0, 5, 0), MinWidth = 50 };
+            optionalName.Bind(TextBox.TextProperty, mesh, "OptionalItemName");
+            optionalName.Bind(TextBox.ToolTipProperty, mesh, "TranslatedName");
             meshLine.Children.Add(optionalName);
 
             meshLine.Children.Add(new TextBlock { Text = ".", Margin = new Thickness(0, 0, 5, 0) });
 
-            TextBox translationTextBox = new() { Text = mesh.TranslatedName, Margin = new Thickness(0, 0, 5, 0), MinWidth = 50 };
-            translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedName");
+            TextBox translationTextBox = new() { Margin = new Thickness(0, 0, 5, 0), MinWidth = 50 };
+            translationTextBox.Bind(TextBox.TextProperty, mesh, "TranslatedNameWithoutOptional");
+            translationTextBox.Bind(TextBox.ToolTipProperty, mesh, "TranslatedName");
             meshLine.Children.Add(translationTextBox);
 
-            TextBlock translatingTextBlock = new()
-            {
-                Text = mesh.TranslatingName,
-                Foreground = Brushes.Red
-            };
+            TextBlock translatingTextBlock = new() { Foreground = Brushes.Red };
             translatingTextBlock.Bind(TextBlock.TextProperty, mesh, "TranslatingName");
             meshLine.Children.Add(translatingTextBlock);
 

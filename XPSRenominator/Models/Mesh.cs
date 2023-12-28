@@ -10,7 +10,6 @@ namespace XPSRenominator.Models
 {
     public class Mesh : Translatable, ICloneable
     {
-        public OptionalItem OptionalItem { get; set; } = new();
         public Material Material { get; set; } = new();
         
         public int UvLayers { get; set; } = 1;
@@ -21,10 +20,47 @@ namespace XPSRenominator.Models
 
         public IEnumerable<Bone> UsedBones => Vertices.SelectMany(v => v.Bones).SelectMany(vb => vb.Bone.GetFullTree()).Distinct();
         
-        public bool IsOptional => !string.IsNullOrEmpty(OptionalItem.TranslatedName);
-        public string OriginalNameWithOptional => !string.IsNullOrEmpty(OptionalItem.OriginalName) ? (OptionalItem.OriginalVisible ? "+" : "-") + OptionalItem.OriginalName + "." + OriginalName : OriginalName;
-        public string TranslatedNameWithOptional => IsOptional ? (OptionalItem.Visible ? "+" : "-") + OptionalItem.TranslatedName + "." + TranslatedName : TranslatedName;
-        
+        protected override void OnTranslationChange()
+        {
+            // ReSharper disable once ExplicitCallerInfoArgument
+            OnPropertyChanged("IsOptional");
+            // ReSharper disable once ExplicitCallerInfoArgument
+            OnPropertyChanged("IsOptionalItemVisible");
+            // ReSharper disable once ExplicitCallerInfoArgument
+            OnPropertyChanged("OptionalItemName");
+            // ReSharper disable once ExplicitCallerInfoArgument
+            OnPropertyChanged("TranslatedNameWithoutOptional");
+        }
+
+        public bool IsOptional => TranslatedName.Contains('.');
+
+        public bool IsOptionalItemVisible
+        {
+            get => !IsOptional || TranslatedName.StartsWith('+');
+            set => TranslatedName = (value ? '+' : '-') + TranslatedName.Trim('+', '-');
+        }
+
+        public string OptionalItemName
+        {
+            get => !IsOptional ? "" : TranslatedName.Split('.', 2)[0].Trim('+', '-');
+            set
+            {
+                if (string.IsNullOrEmpty(value)) TranslatedName = TranslatedNameWithoutOptional;
+                else if (!IsOptional) TranslatedName = (IsOptionalItemVisible ? '+' : '-') + value + '.' + TranslatedName;
+                else TranslatedName = (IsOptionalItemVisible ? '+' : '-') + value + '.' + TranslatedName.Split('.', 2)[1];
+            }
+        }
+
+        public string TranslatedNameWithoutOptional
+        {
+            get => IsOptional ? TranslatedName.Split('.', 2)[1] : TranslatedName;
+            set
+            {
+                if (!IsOptional) TranslatedName = value;
+                else TranslatedName = (IsOptionalItemVisible ? '+' : '-') + OptionalItemName + '.' + value;
+            }
+        }
+
         public void SwapUv()
         {
             if (UvLayers == 2) Vertices.ForEach(vertex => (vertex.Uv, vertex.Uv2) = (vertex.Uv2!, vertex.Uv));
@@ -42,31 +78,6 @@ namespace XPSRenominator.Models
                 Faces = new List<Face>(this.Faces),
             };
         }
-
-        public void SetNameWithOptional(string name)
-        {
-            if (name.Contains('.') && (name.StartsWith('+') || name.StartsWith('-')))
-            {
-                var parts = name.Split('.', 2);
-                OptionalItem.OriginalVisible = parts[0].StartsWith('+');
-                OptionalItem.Visible = parts[0].StartsWith('+');
-                OptionalItem.OriginalName = parts[0].Remove(0, 1);
-                OptionalItem.TranslatedName = parts[0].Remove(0, 1);
-                OriginalName = parts[1];
-                TranslatedName = parts[1];
-            }
-            else
-            {
-                OriginalName = name;
-                TranslatedName = name;
-            }
-        }
-    }
-
-    public class OptionalItem: Translatable
-    {
-        public bool OriginalVisible { get; set; } = true;
-        public bool Visible { get; set; } = true;
     }
 
     public class Material : INotifyPropertyChanged, ICloneable

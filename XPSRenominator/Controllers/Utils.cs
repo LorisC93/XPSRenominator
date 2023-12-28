@@ -17,15 +17,14 @@ namespace XPSRenominator.Controllers
             return result;
         }
 
-        public static void Bind(this DependencyObject control, DependencyProperty property, object source, string field)
+        public static void Bind(this DependencyObject control, DependencyProperty property, object source, string field, BindingMode mode = BindingMode.TwoWay)
         {
-            Binding binding = new(field)
+            BindingOperations.SetBinding(control, property, new Binding(field)
             {
                 Source = source,
-                Mode = BindingMode.TwoWay,
+                Mode = mode,
                 UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
-            };
-            BindingOperations.SetBinding(control, property, binding);
+            });
         }
 
         public static Color ToColor(this IEnumerable<byte> rgba)

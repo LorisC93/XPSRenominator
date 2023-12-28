@@ -148,7 +148,8 @@ namespace XPSRenominator.Controllers
                 int n = 1;
                 while (Meshes.Any(m => m.TranslatedName == uniqueName) || meshes.Any(m => m.TranslatedName == uniqueName)) uniqueName = $"{name}-{n++}";
 
-                mesh.SetNameWithOptional(uniqueName);
+                mesh.OriginalName = uniqueName;
+                mesh.TranslatedName = uniqueName;
                 mesh.UvLayers = int.Parse(originalLines[pointer++].RemoveComment());
                 var textureCount = int.Parse(originalLines[pointer++].RemoveComment());
                 var textures = new List<Texture>();
@@ -318,7 +319,7 @@ namespace XPSRenominator.Controllers
             file.WriteLine(meshes.Count + " # meshes");
             meshes.ForEach(mesh =>
             {
-                file.WriteLine(mesh.Material.RenderGroup!.Id + "_" + mesh.TranslatedNameWithOptional + "_" + string.Join('_', mesh.Material.RenderParameters));
+                file.WriteLine(mesh.Material.RenderGroup!.Id + "_" + mesh.TranslatedName + "_" + string.Join('_', mesh.Material.RenderParameters));
                 file.WriteLine(mesh.UvLayers + " # uv layers");
                 file.WriteLine(mesh.Material.RenderGroup.SupportedTextureTypes.Count + " # textures");
                 foreach (var textureType in mesh.Material.RenderGroup.SupportedTextureTypes)
