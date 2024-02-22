@@ -69,6 +69,12 @@ namespace XPSRenominator.Controllers
                 var parentIndex = parentIndexes[bone];
                 bone.Parent = parentIndex == -1 ? appendTo : bones[parentIndex];
             }
+            bones.Sort((b1, b2) =>
+            {
+                if (b1.GetFullTree().Contains(b2)) return 1;
+                if (b2.GetFullTree().Contains(b1)) return -1;
+                return b1.GetFullTree().Count() - b2.GetFullTree().Count();
+            });
             return bones;
         }
         private void MergeBones(IList<Bone> list2) 

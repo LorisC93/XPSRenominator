@@ -690,7 +690,7 @@ public partial class MainWindow : Window
         {
             if (sfd.FileName.EndsWith(".mesh.ascii"))
             {
-                _originalMeshAsciiName = sfd.FileName;
+                _originalMeshAsciiName ??= sfd.FileName;
                 if (_loader.SaveAscii(sfd.FileName, IncreaseProgress)) return;
                 MessageBox.Show("conflicting bone and/or mesh names found, or invalid Materials, solve them before saving", "Conflict found",
                     MessageBoxButton.OK,
@@ -699,7 +699,7 @@ public partial class MainWindow : Window
             }
             else if (sfd.FileName.EndsWith(".pose"))
             {
-                _originalPoseName = sfd.FileName;
+                _originalPoseName ??= sfd.FileName;
                 _loader.SavePose(sfd.FileName, IncreaseProgress);
             }
         }).Start();
