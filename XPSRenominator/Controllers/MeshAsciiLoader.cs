@@ -20,7 +20,18 @@ namespace XPSRenominator.Controllers
             var newFileBones = LoadBones(originalLines, appendTo);
             MergeBones(newFileBones);
             Meshes.AddRange(LoadMeshes(originalLines, newFileBones, appendTo));
+            FixBonesOrder();
             RemoveUnusedBones();
+        }
+
+        private void FixBonesOrder()
+        {
+            Bones.Sort((b1, b2) =>
+            {
+                if (b1.GetFullTree().Contains(b2)) return 1;
+                if (b2.GetFullTree().Contains(b1)) return -1;
+                return b1.GetFullTree().Count() - b2.GetFullTree().Count();
+            });
         }
 
         private void RemoveUnusedBones()
@@ -69,29 +80,23 @@ namespace XPSRenominator.Controllers
                 var parentIndex = parentIndexes[bone];
                 bone.Parent = parentIndex == -1 ? appendTo : bones[parentIndex];
             }
-            bones.Sort((b1, b2) =>
-            {
-                if (b1.GetFullTree().Contains(b2)) return 1;
-                if (b2.GetFullTree().Contains(b1)) return -1;
-                return b1.GetFullTree().Count() - b2.GetFullTree().Count();
-            });
+            
             return bones;
         }
-        private void MergeBones(IList<Bone> list2) 
+        private void MergeBones(List<Bone> list2) 
         {
             for (int i = 0; i < list2.Count; i++)
             {
-                string name = list2.ElementAt(i).TranslatedName;
-                if (!Bones.Exists(b => b.TranslatedName == name)) continue;
+                if (!Bones.Exists(b => b.TranslatedName == list2[i].TranslatedName)) continue;
 
                 list2.RemoveAt(i);
-                list2.Insert(i, Bones.Find(b => b.TranslatedName == name)!);
+                list2.Insert(i, Bones.Find(b => b.TranslatedName == list2[i].TranslatedName)!);
             }
 
             list2.Except(Bones).ToList().ForEach(mergingBone =>
             {
                 if (mergingBone.Parent != null)
-                    mergingBone.Parent = Bones.Find(b => b.TranslatedName == mergingBone.Parent.TranslatedName);
+                    mergingBone.Parent = list2.Find(b => b.TranslatedName == mergingBone.Parent.TranslatedName);
 
                 Bones.Add(mergingBone);
             });

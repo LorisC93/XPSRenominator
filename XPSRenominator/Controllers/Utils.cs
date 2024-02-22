@@ -30,12 +30,12 @@ namespace XPSRenominator.Controllers
         public static Color ToColor(this IEnumerable<byte> rgba)
         {
             var l = rgba.ToList();
-            return Color.FromArgb(l.ElementAt(3), l.ElementAt(0), l.ElementAt(1), l.ElementAt(2));
+            return Color.FromArgb(l[3], l[0], l[1], l[2]);
         }
 
         public static List<VertexBone> CreateVertexBones(int[] indexes, double[] weights, List<Bone> bones)
         {
-            return indexes.Zip(weights).Select(couple => new VertexBone{ Bone = bones.ElementAt(couple.First), Weight = couple.Second }).ToList();
+            return indexes.Zip(weights).Select(couple => new VertexBone{ Bone = bones[couple.First], Weight = couple.Second }).ToList();
         }
 
         public static int[] ExtractIntArray(this string s) => s.RemoveComment().Split(' ').Select(int.Parse).ToArray();
