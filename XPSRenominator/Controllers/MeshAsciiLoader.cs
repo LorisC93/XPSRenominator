@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -324,7 +325,7 @@ namespace XPSRenominator.Controllers
             {
                 file.WriteLine(bone.TranslatedName);
                 file.WriteLine((bone.Parent == null ? "-1" : usedBones.IndexOf(bone.Parent).ToString()) + " # parent index");
-                file.WriteLine($"{bone.Position.X} {bone.Position.Y} {bone.Position.Z}");
+                file.WriteLine($"{bone.Position.X.ToString(CultureInfo.InvariantCulture)} {bone.Position.Y.ToString(CultureInfo.InvariantCulture)} {bone.Position.Z.ToString(CultureInfo.InvariantCulture)}");
                 increaseProgress();
             });
             file.WriteLine(meshes.Count + " # meshes");
@@ -349,13 +350,13 @@ namespace XPSRenominator.Controllers
                 file.WriteLine(mesh.Vertices.Count + " # vertices");
                 mesh.Vertices.ForEach(v =>
                 {
-                    file.WriteLine($"{v.Position.X} {v.Position.Y} {v.Position.Z}");
-                    file.WriteLine($"{v.Normal.X} {v.Normal.Y} {v.Normal.Z}");
+                    file.WriteLine($"{v.Position.X.ToString(CultureInfo.InvariantCulture)} {v.Position.Y.ToString(CultureInfo.InvariantCulture)} {v.Position.Z.ToString(CultureInfo.InvariantCulture)}");
+                    file.WriteLine($"{v.Normal.X.ToString(CultureInfo.InvariantCulture)} {v.Normal.Y.ToString(CultureInfo.InvariantCulture)} {v.Normal.Z.ToString(CultureInfo.InvariantCulture)}");
                     file.WriteLine($"{v.Color.R} {v.Color.G} {v.Color.B} {v.Color.A}");
-                    file.WriteLine(string.Join(' ', v.Uv));
-                    if (mesh.UvLayers == 2) file.WriteLine(string.Join(' ', v.Uv2 ?? new double[] { 0, 0 }));
+                    file.WriteLine(string.Join(' ', v.Uv.Select(value => value.ToString(CultureInfo.InvariantCulture))));
+                    if (mesh.UvLayers == 2) file.WriteLine(string.Join(' ', (v.Uv2 ?? [0, 0]).Select(value => value.ToString(CultureInfo.InvariantCulture))));
                     file.WriteLine(string.Join(' ', v.Bones.Select(b => usedBones.IndexOf(b.Bone))));
-                    file.WriteLine(string.Join(' ', v.Bones.Select(b => b.Weight)));
+                    file.WriteLine(string.Join(' ', v.Bones.Select(b => b.Weight.ToString(CultureInfo.InvariantCulture))));
                 });
                 file.WriteLine(mesh.Faces.Count + " # faces");
                 mesh.Faces.ForEach(f => file.WriteLine(string.Join(' ', f.Vertices)));
