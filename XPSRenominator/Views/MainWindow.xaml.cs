@@ -181,11 +181,23 @@ public partial class MainWindow : Window
         materialName.Bind(TextBlock.TextProperty, material.Textures[0], "TranslatedName");
 
         DoubleUpDown meshRenderParameter1 = new()
-            { Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(5, 0, 2, 0), MinWidth = 25, FormatString = "F2", Minimum = 0, Increment = 0.1};
+        {
+            Text = material.RenderParameters[0].ToString(CultureInfo.InvariantCulture),
+            Margin = new Thickness(5, 0, 2, 0), MinWidth = 25, FormatString = "F2", Minimum = 0, Increment = 0.1,
+            CultureInfo = CultureInfo.InvariantCulture
+        };
         DoubleUpDown meshRenderParameter2 = new()
-            { Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 2, 0), MinWidth = 25, FormatString = "F2", Minimum = 0, Increment = 0.1 };
+        {
+            Text = material.RenderParameters[1].ToString(CultureInfo.InvariantCulture),
+            Margin = new Thickness(2, 0, 2, 0), MinWidth = 25, FormatString = "F2", Minimum = 0, Increment = 0.1,
+            CultureInfo = CultureInfo.InvariantCulture
+        };
         DoubleUpDown meshRenderParameter3 = new()
-            { Text = material.RenderParameters[2].ToString(CultureInfo.InvariantCulture), Margin = new Thickness(2, 0, 0, 0), MinWidth = 25, FormatString = "F2", Minimum = 0, Increment = 0.1 };
+        {
+            Text = material.RenderParameters[2].ToString(CultureInfo.InvariantCulture),
+            Margin = new Thickness(2, 0, 0, 0), MinWidth = 25, FormatString = "F2", Minimum = 0, Increment = 0.1,
+            CultureInfo = CultureInfo.InvariantCulture
+        };
         meshRenderParameter1.Bind(InputBase.TextProperty, material, "RenderParameters[0]");
         meshRenderParameter2.Bind(InputBase.TextProperty, material, "RenderParameters[1]");
         meshRenderParameter3.Bind(InputBase.TextProperty, material, "RenderParameters[2]");
