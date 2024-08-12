@@ -6,7 +6,7 @@
         xmlns:controls="clr-namespace:XPSRenominator.Controls"
         mc:Ignorable="d"
         Drop="Window_Drop" AllowDrop="True"
-        Title="XPS Renominator 4.0.0" Height="900" Width="850">
+        Title="XPS Renominator 4.1.0" Height="900" Width="850">
     <Window.Resources>
         <Style TargetType="Button">
             <Setter Property="Template">
@@ -163,6 +163,8 @@
                                     <controls:MultiSelectTreeView.CommandBindings>
                                         <CommandBinding Command="Cut" CanExecute="CutBoneCommand_CanExecute" Executed="CutBoneCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="Paste" CanExecute="PasteBoneCommand_CanExecute" Executed="PasteBoneCommand_Executed"></CommandBinding>
+                                        <CommandBinding Command="Copy" CanExecute="CopyBonePositionCommand_CanExecute" Executed="CopyBonePositionCommand_Executed"></CommandBinding>
+                                        <CommandBinding Command="AlignCenter" CanExecute="PasteBonePositionCommand_CanExecute" Executed="PasteBonePositionCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="New" CanExecute="NewBoneCommand_CanExecute" Executed="NewBoneCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="Properties" CanExecute="MirrorBoneCommand_CanExecute" Executed="MirrorBoneCommand_Executed"></CommandBinding>
                                         <CommandBinding Command="Replace" CanExecute="MakeRootBoneCommand_CanExecute" Executed="MakeRootBoneCommand_Executed"></CommandBinding>
@@ -172,6 +174,9 @@
                                         <ContextMenu>
                                             <MenuItem Header="Cut" Command="Cut"></MenuItem>
                                             <MenuItem Header="Paste" Command="Paste"></MenuItem>
+                                            <Separator></Separator>
+                                            <MenuItem Header="Copy Position" Command="Copy"></MenuItem>
+                                            <MenuItem Header="Paste Position" Command="AlignCenter"></MenuItem>
                                             <Separator></Separator>
                                             <MenuItem Header="Make Root" Command="Replace"></MenuItem>
                                             <MenuItem Header="Add Bone" Command="New"></MenuItem>

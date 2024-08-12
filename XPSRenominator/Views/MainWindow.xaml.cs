@@ -13,18 +13,18 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using Xceed.Wpf.Toolkit;
 using Xceed.Wpf.Toolkit.Primitives;
 using XPSRenominator.Controllers;
 using XPSRenominator.Models;
+using Material = XPSRenominator.Models.Material;
 using MessageBox = System.Windows.MessageBox;
 using Selector = System.Windows.Controls.Primitives.Selector;
 
 namespace XPSRenominator;
 
-/// <summary>
-/// Logica di interazione per MainWindow.xaml
-/// </summary>
+/// <summary> Logica di interazione per MainWindow.xaml </summary>
 public partial class MainWindow : Window
 {
     private readonly MeshAsciiLoader _loader = new();
@@ -39,8 +39,9 @@ public partial class MainWindow : Window
         _selectedTab = TabBones;
     }
 
-    private List<TreeViewItem> _cutBones = new();
+    private List<TreeViewItem> _cutBones = [];
     private bool _canDoDragDropOperation = true;
+    private Point3D? copiedPosition = null;
 
     private IEnumerable<Bone> FilteredBones
     {
@@ -289,11 +290,18 @@ public partial class MainWindow : Window
             ContextMenu contextMenu = new();
             MenuItem copyName = new() { Header = "Copy name from Material" };
             MenuItem swapUv = new() { Header = "Swap Uv" };
+            MenuItem viewWeights = new() { Header = "View Bone Weights" };
             MenuItem clone = new() { Header = "Clone" };
             MenuItem delete = new() { Header = "Delete" };
             MenuItem exclude = new() { Header = mesh.Exclude ? "Include" : "Exclude" };
             copyName.Click += (_, _) => mesh.TranslatedName = mesh.Material.Textures[0].TranslatedName.Replace('_','-');
             swapUv.Click += (_, _) => mesh.SwapUv();
+            viewWeights.Click += (_, _) =>
+            {
+                MessageBox.Show(string.Join('\n', mesh.Vertices
+                    .SelectMany(v => v.Bones)
+                    .Select(b => b.Bone.TranslatedName + ": " + b.Weight)));
+            };
             clone.Click += (_, _) =>
             {
                 _loader.CloneMesh(mesh);
@@ -311,6 +319,7 @@ public partial class MainWindow : Window
             };
             contextMenu.Items.Add(copyName);
             contextMenu.Items.Add(swapUv);
+            contextMenu.Items.Add(viewWeights);
             contextMenu.Items.Add(clone);
             contextMenu.Items.Add(delete);
             contextMenu.Items.Add(exclude);
@@ -454,7 +463,7 @@ public partial class MainWindow : Window
 
     private static void Reparent(FrameworkElement source, ItemsControl target)
     {
-        if (target.Tag is not Bone targetBone || source.Tag is not Bone draggedBone || source.Parent is not TreeViewItem parent) return;
+        if (target.Tag is not Bone targetBone || source.Tag is not Bone draggedBone || source.Parent is not ItemsControl parent) return;
         parent.Items.Remove(source);
         draggedBone.Parent = targetBone;
         target.Items.Add(source);
@@ -504,6 +513,26 @@ public partial class MainWindow : Window
         _cutBones.ForEach(t => { t.Foreground = Brushes.Black; t.FontWeight = FontWeights.Normal; });
         _cutBones.Clear();
     }
+    
+    private void CopyBonePositionCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = BoneTree.SelectedItems.Count == 1;
+    }
+    private void CopyBonePositionCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (BoneTree.SelectedItems[0].Tag is not Bone bone) return;
+        copiedPosition = bone.Position;
+    }
+    private void PasteBonePositionCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+    {
+        e.CanExecute = copiedPosition != null && BoneTree.SelectedItems.Count == 1;
+    }
+    private void PasteBonePositionCommand_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (BoneTree.SelectedItems[0].Tag is not Bone bone || copiedPosition == null) return;
+        bone.Position = copiedPosition.Value;
+    }
+
     private void NewBoneCommand_CanExecute(object sender, CanExecuteRoutedEventArgs e)
     {
         e.CanExecute = BoneTree.SelectedItems.Count == 1;
@@ -519,7 +548,7 @@ public partial class MainWindow : Window
     }
     private void MakeRootBoneCommand_Executed(object sender, ExecutedRoutedEventArgs e)
     {
-        if (BoneTree.SelectedItems.First().Tag is not Bone bone) return;
+        if (BoneTree.SelectedItems[0].Tag is not Bone bone) return;
         _loader.MakeRoot(bone);
         RenderBoneTree();
     }

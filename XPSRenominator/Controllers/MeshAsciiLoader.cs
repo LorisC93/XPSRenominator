@@ -125,7 +125,7 @@ namespace XPSRenominator.Controllers
             }).ToList();
         }
 
-        private IEnumerable<Mesh> LoadMeshes(IReadOnlyList<string> originalLines, List<Bone> bonesToUse, Bone? appendTo = null)
+        private List<Mesh> LoadMeshes(IReadOnlyList<string> originalLines, List<Bone> bonesToUse, Bone? appendTo = null)
         {
             // mesh number
             /* for each mesh */
